@@ -15,6 +15,8 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: Regras de acesso do banco (Postgres local)
+        run: sudo apt-get install -y postgresql >/dev/null && sudo supabase/testes/rodar.sh
       - run: npm run lint
       - run: npm run typecheck
       - run: npm run test:coverage
