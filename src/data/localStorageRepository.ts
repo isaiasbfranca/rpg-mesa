@@ -115,3 +115,11 @@ export const localStorageRepository: Repository = {
     return accepted;
   },
 };
+
+/** Tudo o que há salvo neste navegador, para enviar à conta. */
+export const readLocalData = () => {
+  const store = read();
+  return { ...store, invites: invitesOf(store) };
+};
+
+export const hasLocalData = () => read().campaigns.length > 0;

@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import Link from "next/link";
 import { AccountMenu } from "@/components/auth/AccountMenu";
+import { ImportLocalBanner } from "@/components/auth/ImportLocalBanner";
 import { StorageAlert } from "@/components/StorageAlert";
 import "@fontsource/alegreya/latin-400.css";
 import "@fontsource/alegreya/latin-500.css";
@@ -40,6 +41,7 @@ const RootLayout = ({ children }: { children: React.ReactNode }) => (
       </nav>
       <main className="shell">
         <StorageAlert />
+        <ImportLocalBanner />
         {children}
       </main>
     </body>
