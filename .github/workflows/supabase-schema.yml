@@ -1,0 +1,24 @@
+name: Aplicar esquema do Supabase
+
+on:
+  push:
+    branches: [main]
+    paths: [supabase/schema.sql, .github/workflows/supabase-schema.yml]
+  workflow_dispatch:
+
+concurrency:
+  group: supabase-schema
+
+jobs:
+  aplicar:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Avisar se o segredo não existe
+        if: env.SUPABASE_DB_URL == ''
+        run: echo "::warning::Segredo SUPABASE_DB_URL não cadastrado; o esquema não foi aplicado."
+      - name: Rodar supabase/schema.sql
+        if: env.SUPABASE_DB_URL != ''
+        run: psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -f supabase/schema.sql
