@@ -117,7 +117,7 @@ export const TemplateEditor = () => {
               onDrop={() => draggingId && saveCampaign({ ...campaign, template: moveSection(template, draggingId, index) })}
             >
               <button type="button" aria-current={index === selectedIndex} onClick={() => setSelectedId(section.id)}>
-                <span style={{ color: "var(--gold-deep)", marginRight: 8, fontFamily: "var(--f-display)" }}>{ROMAN[index] ?? index + 1}</span>
+                <span style={{ color: "var(--gold)", marginRight: 8, fontFamily: "var(--f-display)" }}>{ROMAN[index] ?? index + 1}</span>
                 {section.title}
               </button>
               <button type="button" className="link-btn" aria-label={`Subir ${section.title}`} disabled={index === 0} onClick={() => saveCampaign({ ...campaign, template: moveSection(template, section.id, index - 1) })}>↑</button>
@@ -159,7 +159,7 @@ export const TemplateEditor = () => {
                       {field.label} <span className="tag">{FIELD_TYPE_LABELS[field.type]}</span>
                       {field.required && <span className="tag">obrigatório</span>}
                     </span>
-                    <button type="button" className="danger" onClick={() => handleRemove(field)} aria-label={`Remover ${field.label}`}>Riscar</button>
+                    <button type="button" className="danger" onClick={() => handleRemove(field)} aria-label={`Riscar ${field.label}`}>Riscar</button>
                   </li>
                 ))}
               </ul>
