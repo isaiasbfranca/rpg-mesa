@@ -73,6 +73,46 @@ insert into resultados select 'Mestra edita e arquiva a própria campanha', '1',
 insert into resultados select 'Mestra edita sessão', '1', pg_temp.como(:'A', 'update public.mesa_docs set data = ''{"title":"s1 editada"}'' where kind=''sessionLog''');
 insert into resultados select 'Mestra apaga sessão', '1', pg_temp.como(:'A', 'delete from public.mesa_docs where kind=''sessionLog''');
 
+-- Jogo ao vivo (US-40 e US-41). Neste ponto: B é jogador da campanha, A é a mestra.
+\set SPEC '{"dice":[{"count":2,"sides":6,"sign":1}],"modifier":3}'
+insert into resultados select 'Jogador não abre sessão ao vivo', 'ERRO', pg_temp.como(:'B', format('select public.mesa_live_start(%L)', :'CAMP'));
+insert into resultados select 'Rolagem sem sessão aberta é recusada', 'ERRO', pg_temp.como(:'A', format('select public.mesa_live_roll(gen_random_uuid(), %L::jsonb, ''normal'', ''2d6+3'', null, null)', :'SPEC'));
+select set_config('request.jwt.claim.sub', :'A', false);
+set role authenticated;
+select public.mesa_live_start(:'CAMP') as live_sid \gset
+select public.mesa_live_start(:'CAMP') = :'live_sid' as mesma into temp t_mesma;
+reset role;
+insert into resultados select 'Abrir de novo devolve a mesma sessão', 'true', (select mesma::text from t_mesma);
+insert into resultados select 'Só uma sessão aberta por campanha', '1', (select count(*)::text from public.mesa_live_sessions where ended_at is null);
+
+update public.mesa_members set display_name = 'Bia' where user_id = :'B';
+
+select set_config('request.jwt.claim.sub', :'B', false);
+set role authenticated;
+select (public.mesa_live_roll(:'live_sid', :'SPEC'::jsonb, 'normal', '2d6+3', 'Ataque', null) ->> 'total')::int as total_b \gset
+reset role;
+insert into resultados select '2d6+3 do jogador fica entre 5 e 15', 'true', ((:total_b between 5 and 15))::text;
+insert into resultados select 'Rolagem guarda o autor', 'Bia', (select author_name from public.mesa_live_rolls limit 1);
+insert into resultados select 'Mestra vê a rolagem do jogador', '1', pg_temp.como(:'A', 'select 1 from public.mesa_live_rolls');
+insert into resultados select 'Estranha não vê rolagens', '0', pg_temp.como(:'C', 'select 1 from public.mesa_live_rolls');
+insert into resultados select 'Estranha não vê a sessão ao vivo', '0', pg_temp.como(:'C', 'select 1 from public.mesa_live_sessions');
+insert into resultados select 'Estranha não rola na sessão alheia', 'ERRO', pg_temp.como(:'C', format('select public.mesa_live_roll(%L, %L::jsonb, ''normal'', ''x'', null, null)', :'live_sid', :'SPEC'));
+insert into resultados select 'Jogador não grava rolagem direto na tabela', 'ERRO', pg_temp.como(:'B', format('insert into public.mesa_live_rolls (session_id, campaign_id, user_id, author_name, roll) values (%L, %L, %L, ''x'', ''{"total":20}'')', :'live_sid', :'CAMP', :'B'));
+insert into resultados select 'Dado fora dos limites é recusado', 'ERRO', pg_temp.como(:'B', format('select public.mesa_live_roll(%L, ''{"dice":[{"count":1,"sides":1,"sign":1}],"modifier":0}''::jsonb, ''normal'', ''d1'', null, null)', :'live_sid'));
+insert into resultados select 'Dados demais são recusados', 'ERRO', pg_temp.como(:'B', format('select public.mesa_live_roll(%L, ''{"dice":[{"count":100,"sides":6,"sign":1},{"count":1,"sides":6,"sign":1}],"modifier":0}''::jsonb, ''normal'', ''x'', null, null)', :'live_sid'));
+insert into resultados select 'Vantagem guarda duas tentativas e fica com a maior', 'true', (
+  with r as (select public.mesa_live_roll(:'live_sid', '{"dice":[{"count":1,"sides":20,"sign":1}],"modifier":0}'::jsonb, 'vantagem', 'd20', null, null) as j)
+  select (jsonb_array_length(j -> 'attempts') = 2 and (j ->> 'total')::int = greatest((j -> 'attempts' -> 0 ->> 'total')::int, (j -> 'attempts' -> 1 ->> 'total')::int))::text from r
+);
+insert into resultados select 'Mil d20 dão média perto de 10,5', 'true', (
+  select (avg(public.mesa_random_int(20)) between 10.0 and 11.0)::text from generate_series(1, 20000)
+);
+insert into resultados select 'Jogador não encerra a sessão', 'ERRO', pg_temp.como(:'B', format('select public.mesa_live_end(%L)', :'live_sid'));
+insert into resultados select 'Mestra encerra a sessão', '1', pg_temp.como(:'A', format('select public.mesa_live_end(%L)', :'live_sid')) ;
+insert into resultados select 'Sem sessão aberta depois de encerrar', '0', (select count(*)::text from public.mesa_live_sessions where ended_at is null);
+insert into resultados select 'Rolagem depois de encerrar é recusada', 'ERRO', pg_temp.como(:'B', format('select public.mesa_live_roll(%L, %L::jsonb, ''normal'', ''x'', null, null)', :'live_sid', :'SPEC'));
+insert into resultados select 'Histórico da sessão encerrada continua visível', '2', pg_temp.como(:'B', 'select 1 from public.mesa_live_rolls');
+
 -- Estranha (sem convite).
 insert into resultados select 'Estranha não vê nada', '0', pg_temp.como(:'C', 'select 1 from public.mesa_docs');
 insert into resultados select 'Estranha não vê participantes', '0', pg_temp.como(:'C', 'select 1 from public.mesa_members');

@@ -19,6 +19,8 @@ export type DiceRoll = {
   label?: string;
   /** Personagem que rolou, para mostrar o avatar no histórico (E12). */
   characterId?: string;
+  /** Quem rolou, nas rolagens da sessão ao vivo. */
+  authorName?: string;
   rolledAt: string;
 };
 
