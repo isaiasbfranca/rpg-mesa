@@ -1,6 +1,7 @@
 "use client";
 
 import { useActor } from "@/hooks/useActor";
+import { useRouteId } from "@/hooks/useRouteId";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -22,8 +23,9 @@ type SaveState = "salvo" | "salvando" | "pendente" | "erro";
 
 const SAVE_LABELS: Record<SaveState, string> = { salvo: "Salvo", salvando: "Salvando…", pendente: "Salvando…", erro: "Não salvo" };
 
-export const CharacterSheet = ({ characterId }: { characterId: string }) => {
+export const CharacterSheet = ({ characterId: routeId }: { characterId: string }) => {
   const router = useRouter();
+  const characterId = useRouteId(routeId, "personagens") ?? "";
   const { campaign } = useCampaign();
   const actor = useActor();
   const [character, setCharacter] = useState<Character | null>();
@@ -32,6 +34,7 @@ export const CharacterSheet = ({ characterId }: { characterId: string }) => {
   const dice = useRollHistory(campaign.id);
 
   useEffect(() => {
+    if (!characterId) return;
     repository.getCharacter(characterId).then((found) => setCharacter(found ?? null));
   }, [characterId]);
 

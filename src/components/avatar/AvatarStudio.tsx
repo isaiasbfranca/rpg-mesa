@@ -20,6 +20,7 @@ import {
 import { canEditCharacter } from "@/domain/permissions";
 import type { Character } from "@/domain/types";
 import { useActor } from "@/hooks/useActor";
+import { useRouteId } from "@/hooks/useRouteId";
 import { useBeforeUnload } from "@/hooks/useBeforeUnload";
 import { CharacterAvatar } from "./CharacterAvatar";
 import { ImageCropper } from "./ImageCropper";
@@ -37,8 +38,9 @@ const UNDO_LIMIT = 40;
 const sameAvatar = (a?: Avatar, b?: Avatar) => JSON.stringify(a) === JSON.stringify(b);
 
 /** Os três caminhos do E12 levam ao mesmo rascunho; só "Salvar aparência" grava na ficha. */
-export const AvatarStudio = ({ characterId }: { characterId: string }) => {
+export const AvatarStudio = ({ characterId: routeId }: { characterId: string }) => {
   const router = useRouter();
+  const characterId = useRouteId(routeId, "personagens") ?? "";
   const { campaign } = useCampaign();
   const actor = useActor();
   const [character, setCharacter] = useState<Character | null>();
@@ -52,6 +54,7 @@ export const AvatarStudio = ({ characterId }: { characterId: string }) => {
   const pickerKey = useRef<PortraitKey>(undefined);
 
   useEffect(() => {
+    if (!characterId) return;
     repository.getCharacter(characterId).then((found) => {
       setCharacter(found ?? null);
       const avatar = found?.avatar;

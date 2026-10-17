@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { repository } from "@/data";
+import { useRealPath, useRouteId } from "@/hooks/useRouteId";
 import type { Campaign } from "@/domain/types";
 import { CampaignContext } from "./CampaignContext";
 
@@ -15,11 +15,13 @@ const TABS = [
   { path: "/dados", label: "Dados" },
 ];
 
-export const CampaignShell = ({ campaignId, children }: { campaignId: string; children: React.ReactNode }) => {
-  const pathname = usePathname();
+export const CampaignShell = ({ campaignId: routeId, children }: { campaignId: string; children: React.ReactNode }) => {
+  const pathname = useRealPath();
+  const campaignId = useRouteId(routeId, "campanhas");
   const [campaign, setCampaign] = useState<Campaign | null>();
 
   useEffect(() => {
+    if (!campaignId) return;
     repository.getCampaign(campaignId).then((found) => setCampaign(found ?? null));
   }, [campaignId]);
 
@@ -29,7 +31,7 @@ export const CampaignShell = ({ campaignId, children }: { campaignId: string; ch
 
   const contextValue = useMemo(() => (campaign ? { campaign, saveCampaign } : null), [campaign, saveCampaign]);
 
-  if (campaign === undefined) return <p className="muted">Carregando…</p>;
+  if (!campaignId || campaign === undefined) return <p className="muted">Carregando…</p>;
   if (campaign === null || !contextValue)
     return <p>Campanha não encontrada. <Link href="/campanhas">Voltar para campanhas</Link></p>;
 

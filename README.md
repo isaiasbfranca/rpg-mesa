@@ -32,3 +32,9 @@ npm run build
 ## Ainda não
 
 Contas, convites e servidor (dados só no navegador, um usuário que é sempre a mestra). Ver próximos passos na arquitetura.
+
+## GitHub Pages
+
+O workflow `.github/workflows/pages.yml` publica o app em `https://<usuário>.github.io/<repositório>/` a cada push na `main`. Ele exporta o Next como site estático (`GITHUB_PAGES=true`, `NEXT_PUBLIC_BASE_PATH=/<repositório>`).
+
+Como o Pages não conhece os ids criados no navegador, o export gera uma página-modelo (`/campanhas/_/...`) e o `404.html` (`scripts/gerar-404.mjs`) leva a URL real para ela. Fora do Pages (`npm run dev`, `npm run build`) nada disso é usado.
