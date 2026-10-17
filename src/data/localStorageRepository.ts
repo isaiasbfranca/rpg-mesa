@@ -107,6 +107,13 @@ export const localStorageRepository: Repository = {
 
   findInvite: async (token) => invitesOf(read()).find((i) => i.token === token),
 
+  previewInvite: async (token) => {
+    const store = read();
+    const invite = invitesOf(store).find((i) => i.token === token);
+    const campaign = invite && store.campaigns.find((c) => c.id === invite.campaignId);
+    return invite && campaign ? { invite, campaign } : undefined;
+  },
+
   acceptInvite: async (token) => {
     const found = invitesOf(read()).find((i) => i.token === token && i.status === "pendente");
     if (!found) return undefined;

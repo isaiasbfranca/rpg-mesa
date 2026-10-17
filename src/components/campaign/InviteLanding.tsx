@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { isAuthConfigured } from "@/auth/supabaseClient";
 import { repository } from "@/data";
+import { useAuthUser } from "@/hooks/useAuthUser";
 import { isInviteOpen } from "@/domain/table";
 import type { Campaign, Invite } from "@/domain/types";
 
@@ -12,23 +14,44 @@ type Found = { invite: Invite; campaign: Campaign } | null;
 /** Convite recebido (2d). Rota pública com o token em ?t=, para funcionar no export estático. */
 export const InviteLanding = () => {
   const router = useRouter();
+  const user = useAuthUser();
   const [found, setFound] = useState<Found>();
+  const [failed, setFailed] = useState(false);
+  /** Sem conta, só o navegador que criou o convite o reconhece; qualquer outro precisa entrar para ver os convites da nuvem. */
+  const needsLogin = isAuthConfigured && user === null && found === null;
 
   useEffect(() => {
+    if (user === undefined) return;
     const token = new URLSearchParams(window.location.search).get("t") ?? "";
     (async () => {
-      const invite = token ? await repository.findInvite(token) : undefined;
-      const campaign = invite ? await repository.getCampaign(invite.campaignId) : undefined;
-      setFound(invite && campaign && isInviteOpen(invite) ? { invite, campaign } : null);
-    })();
-  }, []);
+      const preview = token ? await repository.previewInvite(token) : undefined;
+      setFound(preview && isInviteOpen(preview.invite) ? preview : null);
+    })().catch(() => setFailed(true));
+  }, [user]);
 
   const accept = async () => {
     if (!found) return;
-    await repository.acceptInvite(found.invite.token);
-    router.push(`/campanhas/${found.campaign.id}`);
+    try {
+      await repository.acceptInvite(found.invite.token);
+      router.push(`/campanhas/${found.campaign.id}`);
+    } catch {
+      setFailed(true);
+    }
   };
 
+  if (needsLogin) {
+    const next = encodeURIComponent(`/convite/${window.location.search}`);
+    return (
+      <div className="parchment stack" style={{ maxWidth: 520, margin: "48px auto 0", alignItems: "stretch", gap: 14 }}>
+        <p className="eyebrow" style={{ textAlign: "center" }}>Você foi convocado</p>
+        <h1 style={{ fontSize: 30, textAlign: "center" }}>Entre para aceitar</h1>
+        <p className="subtitle" style={{ textAlign: "center" }}>Use a sua conta para sentar à mesa. Se ainda não tem uma, crie em um minuto.</p>
+        <Link href={`/entrar?next=${next}`} className="btn-gold-link" style={{ justifyContent: "center" }}>Entrar</Link>
+        <Link href={`/cadastro?next=${next}`} className="muted" style={{ textAlign: "center" }}>Criar uma conta</Link>
+      </div>
+    );
+  }
+  if (failed) return <p className="error" role="alert">Não foi possível falar com o servidor. Tente de novo em instantes.</p>;
   if (found === undefined) return <p className="muted">Carregando…</p>;
   if (found === null)
     return (
