@@ -10,6 +10,7 @@ import {
   addField,
   addSection,
   fieldHasValues,
+  moveSection,
   FIELD_TYPE_LABELS,
   MODIFIER_RULE_LABELS,
   removeField,
@@ -35,7 +36,7 @@ const buildField = (label: string, type: FieldType, required: boolean, options: 
   return { ...base, type };
 };
 
-const AddFieldForm = ({ onAdd, type, onTypeChange }: { onAdd: (field: Field) => void; type: FieldType; onTypeChange: (type: FieldType) => void }) => {
+const AddFieldForm = ({ onAdd, type, onTypeChange, onCancel, sectionTitle }: { onAdd: (field: Field) => void; type: FieldType; onTypeChange: (type: FieldType) => void; onCancel: () => void; sectionTitle: string }) => {
   const [label, setLabel] = useState("");
   const setType = onTypeChange;
   const [required, setRequired] = useState(false);
@@ -50,7 +51,9 @@ const AddFieldForm = ({ onAdd, type, onTypeChange }: { onAdd: (field: Field) => 
   };
 
   return (
-    <form className="row" onSubmit={handleSubmit} style={{ alignItems: "flex-end" }}>
+    <form className="row field-form" onSubmit={handleSubmit} style={{ alignItems: "flex-end" }}>
+      <span className="sheet-handle sheet-only" aria-hidden />
+      <p className="sheet-only" style={{ flex: "1 1 100%" }}><strong style={{ fontFamily: "var(--f-display)", fontSize: 22 }}>Novo campo</strong> <span className="eyebrow">em {sectionTitle}</span></p>
       <label style={{ flex: "1 1 160px" }}>Novo campo<input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Rótulo" /></label>
       <label>
         Tipo
@@ -62,6 +65,7 @@ const AddFieldForm = ({ onAdd, type, onTypeChange }: { onAdd: (field: Field) => 
         <label style={{ flex: "1 1 160px" }}>Opções<input value={options} onChange={(e) => setOptions(e.target.value)} placeholder="Separe por vírgula" /></label>
       )}
       <label className="inline"><input type="checkbox" checked={required} onChange={(e) => setRequired(e.target.checked)} />Obrigatório</label>
+      <button type="button" className="secondary sheet-only" onClick={onCancel}>Cancelar</button>
       <button type="submit" className="secondary">Adicionar</button>
     </form>
   );
@@ -74,6 +78,8 @@ export const TemplateEditor = () => {
   const [sectionTitle, setSectionTitle] = useState("");
   const [selectedId, setSelectedId] = useState<string>();
   const [newType, setNewType] = useState<FieldType>("texto");
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [draggingId, setDraggingId] = useState<string>();
   const { template } = campaign;
   const selectedIndex = Math.max(0, template.sections.findIndex((section) => section.id === selectedId));
   const selected = template.sections[selectedIndex];
@@ -104,10 +110,19 @@ export const TemplateEditor = () => {
       <div className="template-grid">
         <nav className="leather toc stack" aria-label="Sumário do modelo" style={{ gap: 4 }}>
           {template.sections.map((section, index) => (
-            <button key={section.id} type="button" aria-current={index === selectedIndex} onClick={() => setSelectedId(section.id)}>
-              <span style={{ color: "var(--gold-deep)", marginRight: 8, fontFamily: "var(--f-display)" }}>{ROMAN[index] ?? index + 1}</span>
-              {section.title}
-            </button>
+            <div
+              key={section.id} className="toc-item" draggable
+              onDragStart={() => setDraggingId(section.id)} onDragEnd={() => setDraggingId(undefined)}
+              onDragOver={(event) => event.preventDefault()}
+              onDrop={() => draggingId && saveCampaign({ ...campaign, template: moveSection(template, draggingId, index) })}
+            >
+              <button type="button" aria-current={index === selectedIndex} onClick={() => setSelectedId(section.id)}>
+                <span style={{ color: "var(--gold-deep)", marginRight: 8, fontFamily: "var(--f-display)" }}>{ROMAN[index] ?? index + 1}</span>
+                {section.title}
+              </button>
+              <button type="button" className="link-btn" aria-label={`Subir ${section.title}`} disabled={index === 0} onClick={() => saveCampaign({ ...campaign, template: moveSection(template, section.id, index - 1) })}>↑</button>
+              <button type="button" className="link-btn" aria-label={`Descer ${section.title}`} disabled={index === template.sections.length - 1} onClick={() => saveCampaign({ ...campaign, template: moveSection(template, section.id, index + 1) })}>↓</button>
+            </div>
           ))}
           <form onSubmit={handleAddSection} className="stack" style={{ gap: 8, marginTop: 8 }}>
             <label>Nova seção<input value={sectionTitle} onChange={(e) => setSectionTitle(e.target.value)} placeholder="Ex.: Perícias" /></label>
@@ -148,10 +163,19 @@ export const TemplateEditor = () => {
                   </li>
                 ))}
               </ul>
-              <AddFieldForm
-                type={newType} onTypeChange={setNewType}
-                onAdd={(field) => saveCampaign({ ...campaign, template: addField(template, selected.id, field) })}
-              />
+              <button type="button" className="secondary open-sheet" onClick={() => setSheetOpen(true)}>Adicionar campo</button>
+              <div className={`field-sheet ${sheetOpen ? "open" : ""}`}>
+                <div className="sheet-backdrop" onClick={() => setSheetOpen(false)} aria-hidden />
+                <div className="sheet-body leather">
+                  <AddFieldForm
+                    type={newType} onTypeChange={setNewType} sectionTitle={selected.title} onCancel={() => setSheetOpen(false)}
+                    onAdd={(field) => {
+                      saveCampaign({ ...campaign, template: addField(template, selected.id, field) });
+                      setSheetOpen(false);
+                    }}
+                  />
+                </div>
+              </div>
               <p className="subtitle">Fichas já escritas ganham o campo novo em branco. Nenhum valor é apagado.</p>
             </section>
           )}

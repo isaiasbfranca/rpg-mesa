@@ -105,3 +105,14 @@ export const fieldHasValues = (
   characters: { values: Record<string, FieldValue> }[],
 ): boolean =>
   characters.some((c) => !isBlank(c.values[fieldId]));
+
+/** Move uma seção para a posição `toIndex`; a ordem só muda a apresentação, então os valores das fichas não são tocados. */
+export const moveSection = (template: SheetTemplate, sectionId: string, toIndex: number): SheetTemplate => {
+  const from = template.sections.findIndex((s) => s.id === sectionId);
+  const target = Math.min(Math.max(toIndex, 0), template.sections.length - 1);
+  if (from < 0 || from === target) return template;
+  const sections = template.sections.filter((s) => s.id !== sectionId);
+  const moved = template.sections[from];
+  if (!moved) return template;
+  return bump(template, [...sections.slice(0, target), moved, ...sections.slice(target)]);
+};

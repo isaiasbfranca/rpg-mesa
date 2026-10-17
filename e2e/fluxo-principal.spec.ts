@@ -13,6 +13,8 @@ test("mestra cria campanha, monta ficha, rola, registra sessão e nota", async (
   await expect(page).toHaveURL(/\/ficha$/);
 
   const identity = page.getByRole("region", { name: "Seção Identidade" });
+  const openSheet = identity.getByRole("button", { name: "Adicionar campo" });
+  if (await openSheet.isVisible()) await openSheet.click();
   await identity.getByLabel("Novo campo").fill("Sorte");
   await identity.getByLabel("Tipo").selectOption("atributo");
   await identity.getByRole("button", { name: "Adicionar", exact: true }).click();
@@ -125,4 +127,32 @@ test("assistente cria personagem com atributos rolados", async ({ page }) => {
   await page.getByRole("button", { name: "Criar personagem" }).click();
   await expect(page).toHaveURL(/personagens\/[^/]+$/);
   await expect(page.getByLabel("Nome do personagem")).toHaveValue("Bram");
+});
+
+test("compra de pontos respeita o orçamento de 27", async ({ page }) => {
+  await page.goto("/campanhas");
+  await page.getByLabel("Nome", { exact: true }).fill("Mesa de Pontos");
+  await foundTable(page);
+  await page.getByRole("link", { name: "Painel" }).first().click();
+  await page.getByRole("link", { name: "Novo personagem (assistente)" }).click();
+  await expect(page).toHaveURL(/personagens\/novo$/);
+  await page.getByLabel("Nome do personagem").fill("Orla");
+  await page.getByRole("button", { name: "Atributos ›" }).click();
+  await page.getByRole("button", { name: "Comprar pontos" }).click();
+  await expect(page.getByText("Pontos restantes: 27 de 27")).toBeVisible();
+  const raise = page.getByRole("button", { name: "Aumentar Força" });
+  for (let i = 0; i < 7; i++) await raise.click();
+  await expect(page.getByText("Pontos restantes: 18 de 27")).toBeVisible();
+  await expect(raise).toBeDisabled();
+});
+
+test("mestra reordena seções do modelo", async ({ page }) => {
+  await page.goto("/campanhas");
+  await page.getByLabel("Nome", { exact: true }).fill("Mesa de Ordem");
+  await foundTable(page);
+  await expect(page).toHaveURL(/\/ficha$/);
+  const toc = page.getByRole("navigation", { name: "Sumário do modelo" });
+  await toc.getByRole("button", { name: "Descer Identidade" }).click();
+  await expect(toc.getByRole("button", { name: "Subir Identidade" })).toBeEnabled();
+  await expect(toc.getByRole("button", { name: "Subir Atributos" })).toBeDisabled();
 });

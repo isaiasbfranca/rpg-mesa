@@ -14,7 +14,7 @@ export const Die = ({ sides, value, tone, rotate = 0 }: Props) => {
   const thrown = value !== undefined;
   const classes = ["die", `die-${shape}`, thrown ? "thrown" : "", tone ?? ""].filter(Boolean).join(" ");
   return (
-    <span className={classes} style={thrown ? { transform: `rotate(${rotate}deg)` } : undefined} aria-hidden>
+    <span className={classes} style={thrown ? ({ "--rest": `${rotate}deg`, transform: `rotate(${rotate}deg)` } as React.CSSProperties) : undefined} aria-hidden>
       <span>{thrown ? value : shape === 100 ? "%" : shape}</span>
     </span>
   );

@@ -43,7 +43,7 @@ A regra de dependência é `app → components → hooks → data → domain`. O
 - **Fontes** (Alegreya, Alegreya SC, Alegreya Sans SC, JetBrains Mono) via `@fontsource/*` em vez de `next/font/google`: ficam no bundle, sem pedir nada ao Google no build do Pages.
 - **Novos:** `RoundTable` (mesa e cadeiras), `TavolaBoard` (aba Távola e convocação), `InviteLanding` (rota pública `/convite/?t=<token>`, com query string para funcionar no export estático), `CharacterWizard` (4 capítulos, atributos por 4d6 em `domain/abilityScores.ts`), `Die`, bandeja de dados e crônica em `DiceRoller`.
 - **Dados:** `Campaign.seats`/`schedule` (opcionais) e `Invite` (token de 128 bits, vale 7 dias, `domain/table.ts`). `Repository` ganhou `listInvites`, `createInvite`, `revokeInvite`, `findInvite`, `acceptInvite`; no localStorage o convite só vale neste navegador até existir servidor.
-- **Fora desta entrega:** modo "Comprar pontos" nos atributos, arrastar para reordenar seções, folha "Novo campo" do celular e animação de dados rolando.
+- **Também entregues:** compra de pontos (27 pontos, valores 8 a 15, `domain/pointBuy.ts`), reordenar seções do modelo (arrastar ou botões ↑↓, `moveSection`), folha "Novo campo" no celular e animação dos dados (CSS, desligada com `prefers-reduced-motion`).
 
 ### Dados
 As telas falam só com o tipo `Repository`. Hoje ele é implementado com `localStorage` (um usuário local que é sempre a mestra), o que deixa o app inteiro navegável sem servidor. A troca para Postgres é escrever outra implementação que chama Server Actions; as telas não mudam.

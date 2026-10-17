@@ -4,6 +4,7 @@ import {
   attributeModifier,
   fieldHasValues,
   missingRequiredFields,
+  moveSection,
   removeField,
   valuesForTemplate,
   type SheetTemplate,
@@ -75,5 +76,31 @@ describe("evolução do modelo", () => {
 
   it("lista campos obrigatórios vazios", () => {
     expect(missingRequiredFields(template, { nome: "x" }).map((f) => f.id)).toEqual(["for"]);
+  });
+});
+
+describe("moveSection", () => {
+  const base = {
+    version: 3,
+    sections: [
+      { id: "a", title: "A", fields: [] },
+      { id: "b", title: "B", fields: [] },
+      { id: "c", title: "C", fields: [] },
+    ],
+  };
+
+  it("reordena e sobe a versão", () => {
+    const moved = moveSection(base, "c", 0);
+    expect(moved.sections.map((s) => s.id)).toEqual(["c", "a", "b"]);
+    expect(moved.version).toBe(4);
+  });
+
+  it("não muda nada quando a posição é a mesma ou a seção não existe", () => {
+    expect(moveSection(base, "b", 1)).toBe(base);
+    expect(moveSection(base, "x", 0)).toBe(base);
+  });
+
+  it("limita a posição ao fim da lista", () => {
+    expect(moveSection(base, "a", 99).sections.map((s) => s.id)).toEqual(["b", "c", "a"]);
   });
 });

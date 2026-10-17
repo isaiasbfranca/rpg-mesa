@@ -78,7 +78,7 @@ const DiceTray = ({ roll, authorOf }: { roll?: DiceRoll; authorOf?: RollAuthorLo
   const thrown = (kept?.rolls ?? []).flatMap((r) => r.values.map((value) => ({ sides: r.sides, value })));
   const author = roll.characterId ? authorOf?.(roll.characterId) : undefined;
   return (
-    <div className="felt-tray tray" aria-live="polite" aria-atomic="true">
+    <div key={roll.rolledAt} className="felt-tray tray" aria-live="polite" aria-atomic="true">
       <span className="tray-label">{roll.label ?? author?.name ?? roll.expression}</span>
       <div className="thrown-row" aria-hidden>
         {thrown.slice(0, MAX_SHOWN_DICE).map((die, index) => {

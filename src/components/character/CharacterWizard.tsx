@@ -9,13 +9,14 @@ import { useCampaign } from "@/components/campaign/CampaignContext";
 import { repository } from "@/data";
 import type { Avatar } from "@/domain/avatar";
 import { rollAbilityPool } from "@/domain/abilityScores";
+import { canLower, canRaise, pointsLeft, POINT_BUY_BUDGET, startingScores } from "@/domain/pointBuy";
 import { canCreateNpc } from "@/domain/permissions";
 import { allFields, attributeModifier, formatModifier, valuesForTemplate, type Field, type FieldValue } from "@/domain/sheet";
 import { useActor } from "@/hooks/useActor";
 
 const CHAPTERS = ["Origem", "Atributos", "Semblante", "Juramento"];
 const ROMAN = ["I", "II", "III", "IV"];
-type Method = "rolar" | "escrever";
+type Method = "rolar" | "comprar" | "escrever";
 
 const isIdentityField = (field: Field) => field.type === "texto" || field.type === "textoLongo" || field.type === "numero";
 
@@ -33,6 +34,7 @@ export const CharacterWizard = () => {
   const [selected, setSelected] = useState<number>();
   /** Atributo → posição no conjunto lançado. */
   const [assignments, setAssignments] = useState<Record<string, number>>({});
+  const [bought, setBought] = useState<number[]>([]);
   const [typed, setTyped] = useState<Record<string, FieldValue>>({});
   const [avatar, setAvatar] = useState<Avatar>();
   const [saving, setSaving] = useState(false);
@@ -40,10 +42,15 @@ export const CharacterWizard = () => {
   const fields = allFields(campaign.template);
   const attributes = fields.filter((f) => f.type === "atributo");
   const identityFields = fields.filter(isIdentityField);
+  const attributeIndex = (field: Field) => attributes.findIndex((a) => a.id === field.id);
+  const boughtScores = bought.length === attributes.length ? bought : startingScores(attributes.length);
+  const changeBought = (index: number, delta: number) =>
+    setBought(boughtScores.map((score, i) => (i === index ? score + delta : score)));
   const usedSlots = new Set(Object.values(assignments));
 
   const attributeValue = (field: Field): FieldValue => {
     if (method === "escrever") return typed[field.id] ?? "";
+    if (method === "comprar") return boughtScores[attributeIndex(field)] ?? "";
     const slot = assignments[field.id];
     return slot === undefined ? "" : (pool[slot] ?? "");
   };
@@ -143,6 +150,7 @@ export const CharacterWizard = () => {
                 <h2>Atributos</h2>
                 <div className="segmented" role="group" aria-label="Método">
                   <button type="button" aria-pressed={method === "rolar"} onClick={() => setMethod("rolar")}>Rolar 4d6</button>
+                  <button type="button" aria-pressed={method === "comprar"} onClick={() => setMethod("comprar")}>Comprar pontos</button>
                   <button type="button" aria-pressed={method === "escrever"} onClick={() => setMethod("escrever")}>Escrever</button>
                 </div>
               </div>
@@ -165,6 +173,9 @@ export const CharacterWizard = () => {
                   </button>
                 </>
               )}
+              {method === "comprar" && attributes.length > 0 && (
+                <p className="eyebrow" role="status">Pontos restantes: {pointsLeft(boughtScores, POINT_BUY_BUDGET)} de {POINT_BUY_BUDGET}</p>
+              )}
               <div className="shield-grid">
                 {attributes.map((field) => {
                   const value = attributeValue(field);
@@ -179,6 +190,18 @@ export const CharacterWizard = () => {
                       <span className="val">{filled ? value : "?"}</span>
                       {filled && campaign.modifierRule !== "nenhum" && <span className="mod">{formatModifier(modifier)}</span>}
                     </button>
+                  ) : method === "comprar" ? (
+                    <div key={field.id} className="stack" style={{ alignItems: "center", gap: 6 }}>
+                      <div className={`shield ${modifier < 0 ? "neg" : ""}`}>
+                        <span className="lbl">{field.label}</span>
+                        <span className="val">{value}</span>
+                        {campaign.modifierRule !== "nenhum" && <span className="mod">{formatModifier(modifier)}</span>}
+                      </div>
+                      <span className="stepper">
+                        <button type="button" className="secondary" aria-label={`Diminuir ${field.label}`} disabled={!canLower(boughtScores, attributeIndex(field))} onClick={() => changeBought(attributeIndex(field), -1)}>−</button>
+                        <button type="button" className="secondary" aria-label={`Aumentar ${field.label}`} disabled={!canRaise(boughtScores, attributeIndex(field))} onClick={() => changeBought(attributeIndex(field), 1)}>+</button>
+                      </span>
+                    </div>
                   ) : (
                     <label key={field.id} style={{ alignItems: "center" }}>
                       {field.label}
