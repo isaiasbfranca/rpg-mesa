@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { foundTable } from "./helpers";
 
 test("mestra cria campanha, monta ficha, rola, registra sessão e nota", async ({ page }) => {
   const errors: string[] = [];
@@ -8,7 +9,7 @@ test("mestra cria campanha, monta ficha, rola, registra sessão e nota", async (
   await page.goto("/");
   await page.getByLabel("Nome", { exact: true }).fill("A Coroa de Cinzas");
   await page.getByLabel("Sistema").fill("Tormenta adaptado");
-  await page.getByRole("button", { name: "Criar campanha" }).click();
+  await foundTable(page);
   await expect(page).toHaveURL(/\/ficha$/);
 
   const identity = page.getByRole("region", { name: "Seção Identidade" });
@@ -17,7 +18,7 @@ test("mestra cria campanha, monta ficha, rola, registra sessão e nota", async (
   await identity.getByRole("button", { name: "Adicionar", exact: true }).click();
   await expect(identity.getByText("Sorte")).toBeVisible();
 
-  await page.getByRole("link", { name: "Painel" }).click();
+  await page.getByRole("link", { name: "Painel" }).first().click();
   await page.getByLabel("Nome do personagem").fill("Lyra");
   await page.getByRole("button", { name: "Criar ficha" }).click();
   await expect(page).toHaveURL(/personagens/);
@@ -49,7 +50,7 @@ test("mestra cria campanha, monta ficha, rola, registra sessão e nota", async (
   await page.getByRole("button", { name: "Salvar nota" }).click();
   await expect(page.getByRole("heading", { name: "Taverna do Javali" })).toBeVisible();
 
-  await page.getByRole("link", { name: "Painel" }).click();
+  await page.getByRole("link", { name: "Painel" }).first().click();
   await expect(page.getByText("O grupo saiu de Valkaria.")).toBeVisible();
 
   const overflows = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
@@ -71,4 +72,57 @@ test("dados corrompidos geram aviso e cópia (DEF-02)", async ({ page }) => {
   await expect(page.getByRole("alert").filter({ hasText: "corrompidos" })).toBeVisible();
   const backups = await page.evaluate(() => Object.keys(localStorage).filter((k) => k.startsWith("mesa:v1:backup:")));
   expect(backups).toHaveLength(1);
+});
+
+test("fundar mesa, convocar na távola e montar rolagem pelos dados", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+
+  await page.goto("/campanhas");
+  await page.getByLabel("Nome", { exact: true }).fill("Mesa da Távola");
+  const next = page.getByRole("button", { name: /^(Tomo|Cadeiras) ›$/ });
+  while (await next.isVisible()) await next.click();
+  await page.getByRole("button", { name: "Mais um jogador" }).click();
+  await page.getByRole("button", { name: "Fundar mesa e convocar" }).click();
+  await expect(page).toHaveURL(/\/tavola$/);
+
+  await page.getByRole("button", { name: "Gerar link" }).click();
+  await expect(page.getByTestId("invite-link")).toContainText("/convite/?t=");
+  const link = (await page.getByTestId("invite-link").textContent()) ?? "";
+
+  await page.goto(link);
+  await expect(page.getByRole("heading", { name: "Mesa da Távola" })).toBeVisible();
+  await page.getByRole("button", { name: "Aceitar e sentar à mesa" }).click();
+  await expect(page).toHaveURL(/\/campanhas\/[^/]+$/);
+
+  await page.getByRole("link", { name: "Dados" }).first().click();
+  await page.getByRole("button", { name: /^Adicionar d6/ }).click();
+  await page.getByRole("button", { name: /^Adicionar d6/ }).click();
+  await page.getByRole("button", { name: "Aumentar modificador" }).click();
+  await expect(page.getByText("2d6 + 1")).toBeVisible();
+  await page.getByRole("button", { name: "Lançar" }).click();
+  await expect(page.getByLabel("Crônica de rolagens")).toContainText("2d6");
+  expect(errors).toEqual([]);
+});
+
+test("assistente cria personagem com atributos rolados", async ({ page }) => {
+  await page.goto("/campanhas");
+  await page.getByLabel("Nome", { exact: true }).fill("Mesa do Assistente");
+  await foundTable(page);
+  await page.getByRole("link", { name: "Painel" }).first().click();
+  await page.getByRole("link", { name: "Novo personagem (assistente)" }).click();
+  await expect(page).toHaveURL(/personagens\/novo$/);
+
+  await page.getByLabel("Nome do personagem").fill("Bram");
+  await page.getByRole("button", { name: "Atributos ›" }).click();
+  await page.getByRole("button", { name: "Lançar 4d6" }).click();
+  const shield = page.getByRole("button", { name: /^Força: / });
+  await page.getByRole("button", { name: /^Valor \d+$/ }).first().click();
+  await shield.click();
+  await expect(shield).not.toContainText("?");
+  await page.getByRole("button", { name: "Semblante ›" }).click();
+  await page.getByRole("button", { name: "Juramento ›" }).click();
+  await page.getByRole("button", { name: "Criar personagem" }).click();
+  await expect(page).toHaveURL(/personagens\/[^/]+$/);
+  await expect(page.getByLabel("Nome do personagem")).toHaveValue("Bram");
 });

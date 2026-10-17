@@ -38,6 +38,13 @@ A regra de dependência é `app → components → hooks → data → domain`. O
   - **Migração:** retratos salvos pelo criador v1 (11 camadas) são convertidos ao abrir (`portraitOf`/`migrateV1Layers`); o estúdio avisa e a conversão é gravada ao salvar. Sem gênero no v1, quem tinha barba vira masculino e o resto andrógino.
   - **Imagem enviada:** recortada no navegador para 512×512 WebP, com miniatura de 96 px para listas (RNF-14), guardada como data URL. Quando houver servidor, vai para armazenamento de objetos e a ficha guarda só a URL.
 
+### Redesign "mesa de RPG" (handoff de design, 2026-10-17)
+- **Tokens e superfícies** em `globals.css`: madeira (`--wood`), couro (`.leather`/`.card`), pergaminho (`.parchment`, que reaponta `--fg`/`--muted`/`--line` para tinta), feltro (`.felt-tray`), dourado (`.btn`, `.token`, `.die`). Os nomes antigos de token continuam e apontam para as superfícies escuras. Tema escuro apenas; o tema claro antigo foi retirado.
+- **Fontes** (Alegreya, Alegreya SC, Alegreya Sans SC, JetBrains Mono) via `@fontsource/*` em vez de `next/font/google`: ficam no bundle, sem pedir nada ao Google no build do Pages.
+- **Novos:** `RoundTable` (mesa e cadeiras), `TavolaBoard` (aba Távola e convocação), `InviteLanding` (rota pública `/convite/?t=<token>`, com query string para funcionar no export estático), `CharacterWizard` (4 capítulos, atributos por 4d6 em `domain/abilityScores.ts`), `Die`, bandeja de dados e crônica em `DiceRoller`.
+- **Dados:** `Campaign.seats`/`schedule` (opcionais) e `Invite` (token de 128 bits, vale 7 dias, `domain/table.ts`). `Repository` ganhou `listInvites`, `createInvite`, `revokeInvite`, `findInvite`, `acceptInvite`; no localStorage o convite só vale neste navegador até existir servidor.
+- **Fora desta entrega:** modo "Comprar pontos" nos atributos, arrastar para reordenar seções, folha "Novo campo" do celular e animação de dados rolando.
+
 ### Dados
 As telas falam só com o tipo `Repository`. Hoje ele é implementado com `localStorage` (um usuário local que é sempre a mestra), o que deixa o app inteiro navegável sem servidor. A troca para Postgres é escrever outra implementação que chama Server Actions; as telas não mudam.
 

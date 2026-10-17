@@ -10,9 +10,9 @@ const html = `<!doctype html>
 <script>
   var base = ${JSON.stringify(basePath)};
   var path = location.pathname.slice(base.length).replace(/\\/+$/, "");
-  var m = path.match(/^\\/campanhas\\/([^/]+)((?:\\/(?:ficha|sessoes|notas|dados))?|\\/personagens\\/([^/]+)(?:\\/aparencia)?)$/);
+  var m = path.match(/^\\/campanhas\\/([^/]+)((?:\\/(?:ficha|sessoes|notas|dados|tavola|personagens\\/novo))?|\\/personagens\\/([^/]+)(?:\\/aparencia)?)$/);
   if (m && m[1] !== "_") {
-    var model = path.replace(/^\\/campanhas\\/[^/]+/, "/campanhas/_").replace(/\\/personagens\\/[^/]+/, "/personagens/_");
+    var model = path.replace(/^\\/campanhas\\/[^/]+/, "/campanhas/_").replace(/\\/personagens\\/([^/]+)/, function (all, id) { return id === "novo" ? all : "/personagens/_"; });
     location.replace(base + model + "/?p=" + encodeURIComponent(location.pathname));
   } else {
     document.getElementById("msg").innerHTML = 'Página não encontrada. <a href="' + base + '/campanhas/">Voltar para campanhas</a>';

@@ -6,7 +6,31 @@ import { PLACEHOLDER_ID } from "./routePlaceholder";
 
 const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 
-const subscribe = () => () => {};
+const NAVIGATED_EVENT = "mesa:navegou";
+let historyPatched = false;
+
+/** O roteador do Next navega com pushState/replaceState, que não avisam ninguém; avisamos nós. */
+const patchHistory = () => {
+  if (historyPatched) return;
+  historyPatched = true;
+  for (const method of ["pushState", "replaceState"] as const) {
+    const original = window.history[method].bind(window.history);
+    window.history[method] = (...args: Parameters<History["pushState"]>) => {
+      original(...args);
+      window.dispatchEvent(new Event(NAVIGATED_EVENT));
+    };
+  }
+};
+
+const subscribe = (onChange: () => void) => {
+  patchHistory();
+  window.addEventListener(NAVIGATED_EVENT, onChange);
+  window.addEventListener("popstate", onChange);
+  return () => {
+    window.removeEventListener(NAVIGATED_EVENT, onChange);
+    window.removeEventListener("popstate", onChange);
+  };
+};
 const currentPath = () => window.location.pathname;
 const serverPath = () => "";
 

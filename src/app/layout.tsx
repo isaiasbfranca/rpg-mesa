@@ -1,6 +1,18 @@
 import type { Metadata, Viewport } from "next";
 import Link from "next/link";
 import { StorageAlert } from "@/components/StorageAlert";
+import "@fontsource/alegreya/latin-400.css";
+import "@fontsource/alegreya/latin-500.css";
+import "@fontsource/alegreya/latin-700.css";
+import "@fontsource/alegreya/latin-400-italic.css";
+import "@fontsource/alegreya-sc/latin-500.css";
+import "@fontsource/alegreya-sc/latin-700.css";
+import "@fontsource/alegreya-sc/latin-800.css";
+import "@fontsource/alegreya-sans-sc/latin-500.css";
+import "@fontsource/alegreya-sans-sc/latin-700.css";
+import "@fontsource/alegreya-sans-sc/latin-800.css";
+import "@fontsource/jetbrains-mono/latin-400.css";
+import "@fontsource/jetbrains-mono/latin-700.css";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -23,6 +35,10 @@ const RootLayout = ({ children }: { children: React.ReactNode }) => (
         <Link href="/" className="brand">Mesa</Link>
         <Link href="/campanhas">Campanhas</Link>
         <Link href="/dados">Dados</Link>
+        <span className="who" title="Usuário local, sempre mestra">
+          <span>Mestra</span>
+          <span className="token master" aria-hidden>M</span>
+        </span>
       </nav>
       <main className="shell">
         <StorageAlert />

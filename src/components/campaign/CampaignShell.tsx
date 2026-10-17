@@ -9,10 +9,19 @@ import { CampaignContext } from "./CampaignContext";
 
 const TABS = [
   { path: "", label: "Painel" },
+  { path: "/tavola", label: "Távola" },
   { path: "/ficha", label: "Modelo de ficha" },
   { path: "/sessoes", label: "Sessões" },
   { path: "/notas", label: "Notas" },
   { path: "/dados", label: "Dados" },
+];
+
+/** No celular a barra inferior leva ao essencial; a ficha do personagem fica no Painel. */
+const BOTTOM_TABS = [
+  { path: "", label: "Painel" },
+  { path: "/ficha", label: "Ficha" },
+  { path: "/dados", label: "Dados" },
+  { path: "/tavola", label: "Távola" },
 ];
 
 export const CampaignShell = ({ campaignId: routeId, children }: { campaignId: string; children: React.ReactNode }) => {
@@ -38,10 +47,13 @@ export const CampaignShell = ({ campaignId: routeId, children }: { campaignId: s
   const base = `/campanhas/${campaign.id}`;
   return (
     <CampaignContext.Provider value={contextValue}>
-      <header className="stack" style={{ gap: 4, marginBottom: 12 }}>
-        <Link href="/campanhas" className="muted back-link">← Campanhas</Link>
-        <h1>{campaign.name}</h1>
-        <p className="muted">{campaign.system}{campaign.status === "arquivada" && " · arquivada"}</p>
+      <header className="banner">
+        <span className="crest" aria-hidden>{campaign.name.trim().charAt(0).toLocaleUpperCase("pt-BR")}</span>
+        <div className="stack" style={{ gap: 2 }}>
+          <Link href="/campanhas" className="eyebrow back-link" style={{ textDecoration: "none" }}>‹ Campanhas</Link>
+          <h1>{campaign.name}</h1>
+          <p className="eyebrow">{campaign.system}{campaign.status === "arquivada" && " · arquivada"}</p>
+        </div>
       </header>
       <nav className="tabs" aria-label="Seções da campanha">
         {TABS.map((tab) => (
@@ -51,6 +63,13 @@ export const CampaignShell = ({ campaignId: routeId, children }: { campaignId: s
         ))}
       </nav>
       {children}
+      <nav className="bottom-nav" aria-label="Atalhos da campanha">
+        {BOTTOM_TABS.map((tab) => (
+          <Link key={tab.path} href={base + tab.path} aria-current={pathname === base + tab.path ? "page" : undefined}>
+            {tab.label}
+          </Link>
+        ))}
+      </nav>
     </CampaignContext.Provider>
   );
 };

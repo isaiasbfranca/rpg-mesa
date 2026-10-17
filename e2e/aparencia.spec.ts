@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { foundTable } from "./helpers";
 
 // PNG 1x1 vermelho, para testar o envio sem arquivo externo.
 const RED_PIXEL_PNG = Buffer.from(
@@ -9,9 +10,9 @@ const RED_PIXEL_PNG = Buffer.from(
 const createCharacter = async (page: Page, name: string) => {
   await page.goto("/");
   await page.getByLabel("Nome", { exact: true }).fill("Campanha de teste");
-  await page.getByRole("button", { name: "Criar campanha" }).click();
+  await foundTable(page);
   await expect(page).toHaveURL(/\/ficha$/);
-  await page.getByRole("link", { name: "Painel" }).click();
+  await page.getByRole("link", { name: "Painel" }).first().click();
   await page.getByLabel("Nome do personagem").fill(name);
   await page.getByRole("button", { name: "Criar ficha" }).click();
   await expect(page).toHaveURL(/personagens/);
@@ -66,7 +67,7 @@ test("escolhe arquétipo, ajusta no criador, desfaz e salva", async ({ page }) =
   await page.getByRole("button", { name: /Rolar/ }).first().click();
   await expect(page.locator(".roll-dock").getByRole("img", { name: "Avatar de Lyra" })).toBeVisible();
 
-  await page.getByRole("link", { name: "Painel" }).click();
+  await page.getByRole("link", { name: "Painel" }).first().click();
   await expect(page).toHaveURL(/campanhas\/[^/]+$/);
   await expect(page.getByRole("link", { name: /Lyra/ }).getByRole("img", { name: "Avatar de Lyra" })).toBeVisible();
 });
@@ -110,6 +111,6 @@ test("envia imagem com recorte e confirma a troca de caminho", async ({ page }) 
   });
   expect(thumbSrc).toMatch(/^data:image\/(webp|png)/);
   expect(Math.ceil(((thumbSrc?.length ?? 0) * 3) / 4)).toBeLessThan(30 * 1024);
-  await page.getByRole("link", { name: "Painel" }).click();
+  await page.getByRole("link", { name: "Painel" }).first().click();
   await expect(page.getByRole("link", { name: /Bram/ }).getByRole("img", { name: "Avatar de Bram" })).toHaveAttribute("src", thumbSrc ?? "");
 });

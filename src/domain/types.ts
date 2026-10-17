@@ -15,6 +15,10 @@ export type Campaign = {
   /** Dado usado na rolagem a partir de atributo (RF-13). */
   defaultDie: number;
   status: "ativa" | "arquivada";
+  /** Cadeiras de jogadores à mesa (sem contar a mestra); campanhas antigas não têm. */
+  seats?: number;
+  /** Frequência dos encontros, texto livre (opcional). */
+  schedule?: string;
   template: SheetTemplate;
   createdAt: string;
 };
@@ -52,4 +56,16 @@ export type Note = {
   body: string;
   visibility: "privada" | "campanha";
   category?: NoteCategory;
+};
+
+export type InviteStatus = "pendente" | "aceito" | "revogado";
+
+/** Convite por link (E2). O token tem 128 bits; com servidor, ele é a única credencial do link. */
+export type Invite = {
+  id: Id;
+  campaignId: Id;
+  token: string;
+  email?: string;
+  status: InviteStatus;
+  createdAt: string;
 };

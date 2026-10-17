@@ -1,8 +1,9 @@
-import type { Campaign, Character, Id, Note, SessionLog } from "@/domain/types";
+import type { Campaign, Character, Id, Invite, Note, SessionLog } from "@/domain/types";
 
 export type NewCampaign = Omit<Campaign, "id" | "createdAt" | "masterId" | "status">;
 export type NewCharacter = Omit<Character, "id" | "updatedAt" | "ownerId">;
 export type NewSessionLog = Omit<SessionLog, "id">;
+export type NewInvite = Pick<Invite, "campaignId" | "email">;
 export type NewNote = Omit<Note, "id" | "authorId">;
 
 /**
@@ -26,4 +27,9 @@ export type Repository = {
   listNotes: (campaignId: Id) => Promise<Note[]>;
   createNote: (input: NewNote) => Promise<Note>;
   deleteNote: (id: Id) => Promise<void>;
+  listInvites: (campaignId: Id) => Promise<Invite[]>;
+  createInvite: (input: NewInvite) => Promise<Invite>;
+  revokeInvite: (id: Id) => Promise<void>;
+  acceptInvite: (token: string) => Promise<Invite | undefined>;
+  findInvite: (token: string) => Promise<Invite | undefined>;
 };

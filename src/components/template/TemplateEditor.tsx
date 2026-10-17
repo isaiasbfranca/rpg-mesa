@@ -20,6 +20,10 @@ import {
 } from "@/domain/sheet";
 import type { Character } from "@/domain/types";
 
+const TYPE_GLYPHS: Record<FieldType, string> = { texto: "Aa", textoLongo: "¶", numero: "12", caixa: "✓", lista: "≡", atributo: "◆" };
+const TYPE_TILE_LABELS: Record<FieldType, string> = { texto: "Texto", textoLongo: "Texto longo", numero: "Número", caixa: "Caixa", lista: "Lista", atributo: "Atributo" };
+const ROMAN = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"];
+
 const DIE_OPTIONS = [4, 6, 8, 10, 12, 20, 100];
 
 const newFieldId = (label: string) =>
@@ -31,9 +35,9 @@ const buildField = (label: string, type: FieldType, required: boolean, options: 
   return { ...base, type };
 };
 
-const AddFieldForm = ({ onAdd }: { onAdd: (field: Field) => void }) => {
+const AddFieldForm = ({ onAdd, type, onTypeChange }: { onAdd: (field: Field) => void; type: FieldType; onTypeChange: (type: FieldType) => void }) => {
   const [label, setLabel] = useState("");
-  const [type, setType] = useState<FieldType>("texto");
+  const setType = onTypeChange;
   const [required, setRequired] = useState(false);
   const [options, setOptions] = useState("");
 
@@ -68,7 +72,11 @@ export const TemplateEditor = () => {
   const actor = useActor();
   const [characters, setCharacters] = useState<Character[]>([]);
   const [sectionTitle, setSectionTitle] = useState("");
+  const [selectedId, setSelectedId] = useState<string>();
+  const [newType, setNewType] = useState<FieldType>("texto");
   const { template } = campaign;
+  const selectedIndex = Math.max(0, template.sections.findIndex((section) => section.id === selectedId));
+  const selected = template.sections[selectedIndex];
 
   useEffect(() => {
     repository.listCharacters(campaign.id).then(setCharacters);
@@ -91,51 +99,83 @@ export const TemplateEditor = () => {
   };
 
   return (
-    <div className="stack">
-      <section className="card stack" aria-label="Regras de rolagem">
-        <h2>Regras</h2>
-        <div className="row">
-          <label style={{ flex: "1 1 240px" }}>
-            Modificador de atributo
-            <select value={campaign.modifierRule} onChange={(e) => saveCampaign({ ...campaign, modifierRule: e.target.value as ModifierRule })}>
-              {Object.entries(MODIFIER_RULE_LABELS).map(([value, text]) => <option key={value} value={value}>{text}</option>)}
-            </select>
-          </label>
-          <label>
-            Dado do atributo
-            <select value={campaign.defaultDie} onChange={(e) => saveCampaign({ ...campaign, defaultDie: Number(e.target.value) })}>
-              {DIE_OPTIONS.map((sides) => <option key={sides} value={sides}>d{sides}</option>)}
-            </select>
-          </label>
+    <div className="stack" style={{ gap: 20 }}>
+      <p className="mono muted" style={{ textAlign: "right", fontSize: 13 }}>edição {template.version} · gravado</p>
+      <div className="template-grid">
+        <nav className="leather toc stack" aria-label="Sumário do modelo" style={{ gap: 4 }}>
+          {template.sections.map((section, index) => (
+            <button key={section.id} type="button" aria-current={index === selectedIndex} onClick={() => setSelectedId(section.id)}>
+              <span style={{ color: "var(--gold-deep)", marginRight: 8, fontFamily: "var(--f-display)" }}>{ROMAN[index] ?? index + 1}</span>
+              {section.title}
+            </button>
+          ))}
+          <form onSubmit={handleAddSection} className="stack" style={{ gap: 8, marginTop: 8 }}>
+            <label>Nova seção<input value={sectionTitle} onChange={(e) => setSectionTitle(e.target.value)} placeholder="Ex.: Perícias" /></label>
+            <button type="submit" className="secondary">Adicionar seção</button>
+          </form>
+        </nav>
+
+        <div className="stack" style={{ gap: 20, minWidth: 0 }}>
+          <section className="parchment stack" aria-label="Regras de rolagem">
+            <h2 style={{ fontSize: 24 }}>Regras</h2>
+            <div className="row">
+              <label style={{ flex: "1 1 240px" }}>
+                Modificador de atributo
+                <select value={campaign.modifierRule} onChange={(e) => saveCampaign({ ...campaign, modifierRule: e.target.value as ModifierRule })}>
+                  {Object.entries(MODIFIER_RULE_LABELS).map(([value, text]) => <option key={value} value={value}>{text}</option>)}
+                </select>
+              </label>
+              <label>
+                Dado do atributo
+                <select value={campaign.defaultDie} onChange={(e) => saveCampaign({ ...campaign, defaultDie: Number(e.target.value) })}>
+                  {DIE_OPTIONS.map((sides) => <option key={sides} value={sides}>d{sides}</option>)}
+                </select>
+              </label>
+            </div>
+          </section>
+
+          {selected && (
+            <section key={selected.id} className="parchment stack" aria-label={`Seção ${selected.title}`}>
+              <div className="section-title"><h2>{ROMAN[selectedIndex] ?? selectedIndex + 1} · {selected.title}</h2></div>
+              <ul className="stack" style={{ listStyle: "none", padding: 0, margin: 0 }}>
+                {selected.fields.map((field) => (
+                  <li key={field.id} className="row spread">
+                    <span>
+                      {field.label} <span className="tag">{FIELD_TYPE_LABELS[field.type]}</span>
+                      {field.required && <span className="tag">obrigatório</span>}
+                    </span>
+                    <button type="button" className="danger" onClick={() => handleRemove(field)} aria-label={`Remover ${field.label}`}>Riscar</button>
+                  </li>
+                ))}
+              </ul>
+              <AddFieldForm
+                type={newType} onTypeChange={setNewType}
+                onAdd={(field) => saveCampaign({ ...campaign, template: addField(template, selected.id, field) })}
+              />
+              <p className="subtitle">Fichas já escritas ganham o campo novo em branco. Nenhum valor é apagado.</p>
+            </section>
+          )}
+
+          <section className="stack" aria-label="Pré-visualização">
+            <h2 style={{ fontSize: 24 }}>Pré-visualização</h2>
+            <p className="muted subtitle">Modelo versão {template.version}. É assim que os jogadores verão a ficha.</p>
+            <SheetFields template={template} values={valuesForTemplate(template, {})} modifierRule={campaign.modifierRule} readOnly />
+          </section>
         </div>
-      </section>
 
-      {template.sections.map((section) => (
-        <section key={section.id} className="card stack" aria-label={`Seção ${section.title}`}>
-          <h2>{section.title}</h2>
-          <ul className="stack" style={{ listStyle: "none", padding: 0, margin: 0 }}>
-            {section.fields.map((field) => (
-              <li key={field.id} className="row spread">
-                <span>
-                  {field.label} <span className="tag">{FIELD_TYPE_LABELS[field.type]}</span>
-                  {field.required && <span className="tag">obrigatório</span>}
-                </span>
-                <button type="button" className="danger" onClick={() => handleRemove(field)} aria-label={`Remover ${field.label}`}>Remover</button>
-              </li>
+        <aside className="leather stack" aria-label="Componentes">
+          <h2 style={{ fontSize: 22 }}>Componentes</h2>
+          <div className="type-tiles" role="group" aria-label="Tipo do novo campo">
+            {(Object.keys(FIELD_TYPE_LABELS) as FieldType[]).map((type) => (
+              <button key={type} type="button" className="type-tile" aria-pressed={newType === type} onClick={() => setNewType(type)} style={newType === type ? { borderColor: "var(--gold)" } : undefined}>
+                <b>{TYPE_GLYPHS[type]}</b>
+                {TYPE_TILE_LABELS[type]}
+              </button>
             ))}
-          </ul>
-          <AddFieldForm onAdd={(field) => saveCampaign({ ...campaign, template: addField(template, section.id, field) })} />
-        </section>
-      ))}
-
-      <form className="card row" onSubmit={handleAddSection} style={{ alignItems: "flex-end" }}>
-        <label style={{ flex: "1 1 200px" }}>Nova seção<input value={sectionTitle} onChange={(e) => setSectionTitle(e.target.value)} placeholder="Ex.: Perícias" /></label>
-        <button type="submit" className="secondary">Adicionar seção</button>
-      </form>
-
-      <h2>Pré-visualização</h2>
-      <p className="muted">Modelo versão {template.version}. É assim que os jogadores verão a ficha.</p>
-      <SheetFields template={template} values={valuesForTemplate(template, {})} modifierRule={campaign.modifierRule} readOnly />
+          </div>
+          <p className="help">Escolha o tipo e dê um rótulo no formulário da seção.</p>
+        </aside>
+      </div>
     </div>
   );
 };

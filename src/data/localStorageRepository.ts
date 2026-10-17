@@ -1,11 +1,12 @@
-import type { Campaign, Character, Note, SessionLog } from "@/domain/types";
+import type { Campaign, Character, Invite, Note, SessionLog } from "@/domain/types";
 import type { Repository } from "./repository";
 import { readJson, writeJson } from "./storage";
 
 const STORAGE_KEY = "mesa:v1";
 const LOCAL_USER_ID = "usuario-local";
 
-type Store = { campaigns: Campaign[]; characters: Character[]; sessionLogs: SessionLog[]; notes: Note[] };
+/** `invites` é opcional: dados salvos antes do E2 não têm a lista. */
+type Store = { campaigns: Campaign[]; characters: Character[]; sessionLogs: SessionLog[]; notes: Note[]; invites?: Invite[] };
 
 const emptyStore = (): Store => ({ campaigns: [], characters: [], sessionLogs: [], notes: [] });
 
@@ -20,6 +21,11 @@ const write = (store: Store) => writeJson(STORAGE_KEY, store);
 
 const update = (change: (store: Store) => Store) => write(change(read()));
 
+const newToken = () => {
+  const bytes = globalThis.crypto.getRandomValues(new Uint8Array(16));
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+};
+const invitesOf = (s: Store) => s.invites ?? [];
 const newId = () => globalThis.crypto.randomUUID();
 const now = () => new Date().toISOString();
 
@@ -84,4 +90,28 @@ export const localStorageRepository: Repository = {
   },
 
   deleteNote: async (id) => update((s) => ({ ...s, notes: s.notes.filter((n) => n.id !== id) })),
+
+  listInvites: async (campaignId) =>
+    invitesOf(read())
+      .filter((i) => i.campaignId === campaignId && i.status !== "revogado")
+      .toSorted((a, b) => b.createdAt.localeCompare(a.createdAt)),
+
+  createInvite: async (input) => {
+    const invite: Invite = { ...input, id: newId(), token: newToken(), status: "pendente", createdAt: now() };
+    update((s) => ({ ...s, invites: [...invitesOf(s), invite] }));
+    return invite;
+  },
+
+  revokeInvite: async (id) =>
+    update((s) => ({ ...s, invites: invitesOf(s).map((i) => (i.id === id ? { ...i, status: "revogado" as const } : i)) })),
+
+  findInvite: async (token) => invitesOf(read()).find((i) => i.token === token),
+
+  acceptInvite: async (token) => {
+    const found = invitesOf(read()).find((i) => i.token === token && i.status === "pendente");
+    if (!found) return undefined;
+    const accepted: Invite = { ...found, status: "aceito" };
+    update((s) => ({ ...s, invites: invitesOf(s).map((i) => (i.id === found.id ? accepted : i)) }));
+    return accepted;
+  },
 };

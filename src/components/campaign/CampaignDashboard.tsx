@@ -70,6 +70,8 @@ export const CampaignDashboard = () => {
         ))}
       </div>
 
+      <Link href={`/campanhas/${campaign.id}/personagens/novo`} className="btn-gold-link" style={{ alignSelf: "flex-start" }}>Novo personagem (assistente)</Link>
+
       <form className="card row" onSubmit={handleCreate} aria-label="Novo personagem" style={{ alignItems: "flex-end" }}>
         <label style={{ flex: "1 1 200px" }}>Nome do personagem<input value={name} onChange={(e) => setName(e.target.value)} required /></label>
         {canCreateNpc(actor, campaign) && (

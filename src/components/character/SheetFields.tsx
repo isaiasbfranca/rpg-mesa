@@ -59,15 +59,18 @@ const FieldInput = ({ field, value, modifierRule, readOnly, onChange, onRollAttr
       const filled = value !== "" && value !== undefined;
       const modifier = filled ? attributeModifier(modifierRule, asNumber(value)) : 0;
       return (
-        <div className="attr">
-          <label style={{ alignItems: "center", textAlign: "center" }}>
-            {field.label}
-            <input
-              type="number" inputMode="numeric" value={filled ? asNumber(value) : ""} readOnly={readOnly}
-              onChange={(e) => set(e.target.value === "" ? "" : Number(e.target.value))} style={{ width: 80, textAlign: "center" }}
-            />
-          </label>
-          {modifierRule !== "nenhum" && <span className="mono muted">mod {filled ? formatModifier(modifier) : "—"}</span>}
+        <div className="attr stack" style={{ alignItems: "center", gap: 6 }}>
+          <div className={`shield ${filled ? "" : "empty"} ${modifier < 0 ? "neg" : ""}`}>
+            <label style={{ alignItems: "center", textAlign: "center", color: "inherit" }}>
+              <span className="lbl">{field.label}</span>
+              <input
+                type="number" inputMode="numeric" value={filled ? asNumber(value) : ""} readOnly={readOnly}
+                onChange={(e) => set(e.target.value === "" ? "" : Number(e.target.value))}
+                className="val" style={{ width: 80, textAlign: "center", background: "transparent", border: 0, color: "inherit", minHeight: 44, padding: 0 }}
+              />
+            </label>
+            {modifierRule !== "nenhum" && <span className="mod">mod {filled ? formatModifier(modifier) : "—"}</span>}
+          </div>
           {onRollAttribute && (
             <button type="button" className="secondary" onClick={() => onRollAttribute(field, modifier)} aria-label={`Rolar ${field.label}`}>
               🎲 Rolar
@@ -82,10 +85,10 @@ const FieldInput = ({ field, value, modifierRule, readOnly, onChange, onRollAttr
 export const SheetFields = ({ template, values, ...rest }: Props) => (
   <div className="stack">
     {template.sections.map((section) => (
-      <section key={section.id} className="card stack" aria-label={section.title}>
+      <section key={section.id} className="parchment stack" aria-label={section.title}>
         <h2>{section.title}</h2>
         {section.fields.length === 0 && <p className="muted">Seção sem campos.</p>}
-        <div className="grid" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))" }}>
+        <div className="grid" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))", justifyItems: "stretch" }}>
           {section.fields.map((field) => (
             <FieldInput key={field.id} field={field} value={values[field.id]} {...rest} />
           ))}
