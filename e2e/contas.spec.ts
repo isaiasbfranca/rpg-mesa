@@ -4,7 +4,7 @@ import { expect, test, type Page } from "@playwright/test";
 const clickUntilAlert = async (page: Page, button: string, message: string) =>
   expect(async () => {
     await page.getByRole("button", { name: button }).click();
-    await expect(page.getByRole("alert")).toHaveText(message, { timeout: 1000 });
+    await expect(page.locator("p[role=alert]")).toHaveText(message, { timeout: 1000 });
   }).toPass();
 
 const SCREENS = [["/entrar", "Entrar"], ["/cadastro", "Criar conta"], ["/recuperar", "Esqueci a senha"], ["/redefinir", "Nova senha"]] as const;
@@ -31,6 +31,6 @@ test("cadastro confere a repetição da senha", async ({ page }) => {
     await page.getByLabel("Senha", { exact: true }).fill("senhaforte1");
     await page.getByLabel("Repita a senha").fill("outra-senha");
     await page.getByRole("button", { name: "Criar conta" }).click();
-    await expect(page.getByRole("alert")).toHaveText("As senhas não são iguais.", { timeout: 1000 });
+    await expect(page.locator("p[role=alert]")).toHaveText("As senhas não são iguais.", { timeout: 1000 });
   }).toPass();
 });
