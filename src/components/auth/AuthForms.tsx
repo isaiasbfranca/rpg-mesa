@@ -2,11 +2,11 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useState, useSyncExternalStore, type FormEvent } from "react";
 import { onAuthChange, requestPasswordReset, signIn, signUp, updatePassword } from "@/auth/authService";
 import { isAuthConfigured } from "@/auth/supabaseClient";
 import {
-  validateEmail, validatePassword, validatePasswordConfirmation,
+  safeNextPath, validateEmail, validatePassword, validatePasswordConfirmation,
 } from "@/domain/authValidation";
 import { AuthCard } from "./AuthCard";
 
@@ -25,6 +25,18 @@ const useSubmit = (run: () => string | null | Promise<string | null>) => {
   return { error, busy, submit };
 };
 
+/** Para onde seguir depois de entrar (ex.: o convite que a pessoa abriu). Lido no clique, pois o export estático não conhece a URL antes. */
+const nextPath = () => safeNextPath(new URLSearchParams(window.location.search).get("next"));
+
+const subscribeNothing = () => () => {};
+
+/** Mantém o destino ao alternar entre entrar e criar conta. Vazio no HTML estático, preenchido no navegador sem quebrar a hidratação. */
+const useWithNext = () => {
+  const search = useSyncExternalStore(subscribeNothing, () => window.location.search, () => "");
+  const next = new URLSearchParams(search).get("next");
+  return (path: string) => (next ? `${path}?next=${encodeURIComponent(safeNextPath(next))}` : path);
+};
+
 const Fail = ({ error }: { error: string | null }) =>
   error ? <p className="error" role="alert">{error}</p> : null;
 
@@ -33,13 +45,14 @@ const fromOutcome = ({ error }: Outcome) => error;
 
 export const SignInForm = () => {
   const router = useRouter();
+  const withNext = useWithNext();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const { error, busy, submit } = useSubmit(async () => {
     const invalid = firstError(validateEmail(email), password ? null : "Informe a senha.");
     if (invalid) return invalid;
     const result = fromOutcome(await signIn(email, password));
-    if (!result) router.push("/campanhas");
+    if (!result) router.push(nextPath());
     return result;
   });
   return (
@@ -50,13 +63,14 @@ export const SignInForm = () => {
         <Fail error={error} />
         <button type="submit" className="btn-lg" disabled={busy}>{busy ? "Entrando…" : "Entrar"}</button>
         <Link href="/recuperar" className="muted" style={{ textAlign: "center" }}>Esqueci a senha</Link>
-        <Link href="/cadastro" className="muted" style={{ textAlign: "center" }}>Criar uma conta</Link>
+        <Link href={withNext("/cadastro")} className="muted" style={{ textAlign: "center" }}>Criar uma conta</Link>
       </form>
     </AuthCard>
   );
 };
 
 export const SignUpForm = () => {
+  const withNext = useWithNext();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -72,7 +86,7 @@ export const SignUpForm = () => {
     const result = await signUp(email, password, name);
     if (result.error) return result.error;
     if (result.needsConfirmation) setSent(true);
-    else router.push("/campanhas");
+    else router.push(nextPath());
     return null;
   });
 
@@ -92,7 +106,7 @@ export const SignUpForm = () => {
         <label>Repita a senha<input type="password" autoComplete="new-password" value={confirmation} onChange={(e) => setConfirmation(e.target.value)} /></label>
         <Fail error={error} />
         <button type="submit" className="btn-lg" disabled={busy}>{busy ? "Criando…" : "Criar conta"}</button>
-        <Link href="/entrar" className="muted" style={{ textAlign: "center" }}>Já tenho conta</Link>
+        <Link href={withNext("/entrar")} className="muted" style={{ textAlign: "center" }}>Já tenho conta</Link>
       </form>
     </AuthCard>
   );

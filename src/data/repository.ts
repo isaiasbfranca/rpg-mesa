@@ -4,6 +4,7 @@ export type NewCampaign = Omit<Campaign, "id" | "createdAt" | "masterId" | "stat
 export type NewCharacter = Omit<Character, "id" | "updatedAt" | "ownerId">;
 export type NewSessionLog = Omit<SessionLog, "id">;
 export type NewInvite = Pick<Invite, "campaignId" | "email">;
+export type InvitePreview = { invite: Invite; campaign: Campaign };
 export type NewNote = Omit<Note, "id" | "authorId">;
 
 /**
@@ -32,4 +33,6 @@ export type Repository = {
   revokeInvite: (id: Id) => Promise<void>;
   acceptInvite: (token: string) => Promise<Invite | undefined>;
   findInvite: (token: string) => Promise<Invite | undefined>;
+  /** Convite com a campanha a que ele dá acesso, para quem ainda não participa dela. */
+  previewInvite: (token: string) => Promise<InvitePreview | undefined>;
 };

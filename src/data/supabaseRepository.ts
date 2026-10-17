@@ -1,6 +1,6 @@
 import { getSupabase } from "@/auth/supabaseClient";
 import type { Campaign, Character, Id, Invite, Note, SessionLog } from "@/domain/types";
-import type { Repository } from "./repository";
+import type { InvitePreview, Repository } from "./repository";
 
 type Kind = "campaign" | "character" | "sessionLog" | "note" | "invite";
 type Doc = { id: Id };
@@ -30,14 +30,25 @@ const loadDoc = async <T extends Doc>(kind: Kind, id: Id): Promise<T | undefined
 
 const campaignIdOf = (doc: Doc, kind: Kind) => (kind === "campaign" ? doc.id : (doc as Doc & { campaignId: Id }).campaignId);
 
+const rowOf = (kind: Kind, doc: Doc) => ({ kind, id: doc.id, campaign_id: campaignIdOf(doc, kind), data: doc, updated_at: now() });
+
+/** Cria documentos do próprio usuário (ou regrava os seus, na importação). */
 const saveDocs = async (kind: Kind, docs: Doc[]) => {
-  const rows = docs.map((doc) => ({ kind, id: doc.id, campaign_id: campaignIdOf(doc, kind), data: doc, updated_at: now() }));
-  const { error } = await getSupabase().from(TABLE).upsert(rows, { onConflict: "user_id,kind,id" });
+  const { error } = await getSupabase().from(TABLE).upsert(docs.map((doc) => rowOf(kind, doc)), { onConflict: "user_id,kind,id" });
   if (error) fail(error.message);
 };
 
-const save = async <T extends Doc>(kind: Kind, doc: T): Promise<T> => {
-  await saveDocs(kind, [doc]);
+const create = async <T extends Doc>(kind: Kind, doc: T): Promise<T> => {
+  const { error } = await getSupabase().from(TABLE).insert(rowOf(kind, doc));
+  if (error) fail(error.message);
+  return doc;
+};
+
+/** Atualiza pelo id sem trocar o dono: a mestra edita fichas de jogadores, que continuam sendo deles. */
+const change = async <T extends Doc>(kind: Kind, doc: T): Promise<T> => {
+  const { data, error } = await getSupabase().from(TABLE).update({ data: doc, updated_at: now() }).eq("kind", kind).eq("id", doc.id).select("id");
+  if (error) fail(error.message);
+  if (!data?.length) fail("sem permissão para alterar este item");
   return doc;
 };
 
@@ -46,44 +57,67 @@ const remove = async (kind: Kind, id: Id) => {
   if (error) fail(error.message);
 };
 
-/** Repositório da conta logada: o dono de tudo é quem criou, então é sempre a mestra. Convites para outras contas ficam para depois. */
+const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null;
+const isInvite = (value: unknown): value is Invite => isRecord(value) && typeof value.token === "string" && typeof value.campaignId === "string";
+const isCampaign = (value: unknown): value is Campaign => isRecord(value) && typeof value.id === "string" && typeof value.name === "string";
+
+const previewInvite = async (token: string): Promise<InvitePreview | undefined> => {
+  const { data, error } = await getSupabase().rpc("mesa_invite_preview", { invite_token: token });
+  if (error) return fail(error.message);
+  return isRecord(data) && isInvite(data.invite) && isCampaign(data.campaign) ? { invite: data.invite, campaign: data.campaign } : undefined;
+};
+
+const addMaster = async (campaignIds: Id[], userId: Id) => {
+  const rows = campaignIds.map((campaign_id) => ({ campaign_id, user_id: userId, role: "mestra" }));
+  const { error } = await getSupabase().from("mesa_members").upsert(rows, { onConflict: "campaign_id,user_id", ignoreDuplicates: true });
+  if (error) fail(error.message);
+};
+
+/** A mestra é a primeira participante; sem esse vínculo ela não enxergaria nem os convites que cria. */
+const createCampaign = async (userId: Id, campaign: Campaign): Promise<Campaign> => {
+  await create("campaign", campaign);
+  await addMaster([campaign.id], userId);
+  return campaign;
+};
+
+/** Repositório da conta logada. Quem cria a campanha é a mestra; jogadores entram por convite e as regras de acesso ficam no banco (supabase/schema.sql). */
 export const createSupabaseRepository = (userId: Id): Repository => ({
   currentUserId: () => userId,
 
   listCampaigns: async () => (await loadDocs<Campaign>("campaign")).toSorted((a, b) => b.createdAt.localeCompare(a.createdAt)),
   getCampaign: (id) => loadDoc<Campaign>("campaign", id),
-  createCampaign: (input) => save("campaign", { ...input, id: newId(), masterId: userId, status: "ativa", createdAt: now() }),
-  updateCampaign: (campaign) => save("campaign", campaign),
+  createCampaign: (input) => createCampaign(userId, { ...input, id: newId(), masterId: userId, status: "ativa", createdAt: now() }),
+  updateCampaign: (campaign) => change("campaign", campaign),
 
   listCharacters: async (campaignId) =>
     (await loadDocs<Character>("character", campaignId)).toSorted((a, b) => a.name.localeCompare(b.name, "pt-BR")),
   getCharacter: (id) => loadDoc<Character>("character", id),
-  createCharacter: (input) => save("character", { ...input, id: newId(), ownerId: userId, updatedAt: now() }),
-  updateCharacter: (character) => save("character", { ...character, updatedAt: now() }),
+  createCharacter: (input) => create("character", { ...input, id: newId(), ownerId: userId, updatedAt: now() }),
+  updateCharacter: (character) => change("character", { ...character, updatedAt: now() }),
   deleteCharacter: (id) => remove("character", id),
 
   listSessionLogs: async (campaignId) => (await loadDocs<SessionLog>("sessionLog", campaignId)).toSorted((a, b) => b.date.localeCompare(a.date)),
-  createSessionLog: (input) => save("sessionLog", { ...input, id: newId() }),
+  createSessionLog: (input) => create("sessionLog", { ...input, id: newId() }),
 
   listNotes: (campaignId) => loadDocs<Note>("note", campaignId),
-  createNote: (input) => save("note", { ...input, id: newId(), authorId: userId }),
+  createNote: (input) => create("note", { ...input, id: newId(), authorId: userId }),
   deleteNote: (id) => remove("note", id),
 
   listInvites: async (campaignId) =>
     (await loadDocs<Invite>("invite", campaignId)).filter((i) => i.status !== "revogado").toSorted((a, b) => b.createdAt.localeCompare(a.createdAt)),
-  createInvite: (input) => save("invite", { ...input, id: newId(), token: newToken(), status: "pendente", createdAt: now() }),
+  createInvite: (input) => create("invite", { ...input, id: newId(), token: newToken(), status: "pendente", createdAt: now() }),
   revokeInvite: async (id) => {
     const invite = await loadDoc<Invite>("invite", id);
     if (!invite) return;
     const revoked: Invite = { ...invite, status: "revogado" };
-    await save("invite", revoked);
+    await change("invite", revoked);
   },
-  findInvite: async (token) => (await loadDocs<Invite>("invite")).find((i) => i.token === token),
+  findInvite: async (token) => (await previewInvite(token))?.invite,
+  previewInvite,
   acceptInvite: async (token) => {
-    const invite = (await loadDocs<Invite>("invite")).find((i) => i.token === token && i.status === "pendente");
-    if (!invite) return undefined;
-    const accepted: Invite = { ...invite, status: "aceito" };
-    return save("invite", accepted);
+    const { data, error } = await getSupabase().rpc("mesa_accept_invite", { invite_token: token });
+    if (error) return fail(error.message);
+    return isInvite(data) ? data : undefined;
   },
 });
 
@@ -94,6 +128,7 @@ type LocalData = {
 /** Envia os dados do navegador para a conta, trocando o dono local pelo id da conta. Pode ser repetido sem duplicar (mesmos ids). */
 export const importLocalData = async (userId: Id, local: LocalData) => {
   await saveDocs("campaign", local.campaigns.map((c) => ({ ...c, masterId: userId })));
+  await addMaster(local.campaigns.map((c) => c.id), userId);
   await saveDocs("character", local.characters.map((c) => ({ ...c, ownerId: userId })));
   await saveDocs("sessionLog", local.sessionLogs);
   await saveDocs("note", local.notes.map((n) => ({ ...n, authorId: userId })));

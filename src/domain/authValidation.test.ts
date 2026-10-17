@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { friendlyAuthError, validateEmail, validatePassword, validatePasswordConfirmation } from "./authValidation";
+import { friendlyAuthError, safeNextPath, validateEmail, validatePassword, validatePasswordConfirmation } from "./authValidation";
 
 describe("authValidation", () => {
   it("valida e-mail", () => {
@@ -19,5 +19,12 @@ describe("authValidation", () => {
     expect(friendlyAuthError("Invalid login credentials")).toBe("E-mail ou senha incorretos.");
     expect(friendlyAuthError("User already registered")).toContain("Já existe");
     expect(friendlyAuthError("boom 500 stack")).toBe("Não foi possível concluir. Tente de novo.");
+  });
+  it("só aceita destino interno depois do login", () => {
+    expect(safeNextPath("/convite/?t=abc")).toBe("/convite/?t=abc");
+    expect(safeNextPath(null)).toBe("/campanhas");
+    expect(safeNextPath("https://outro.site")).toBe("/campanhas");
+    expect(safeNextPath("//outro.site")).toBe("/campanhas");
+    expect(safeNextPath("/\\outro.site")).toBe("/campanhas");
   });
 });

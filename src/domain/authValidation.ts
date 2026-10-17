@@ -22,3 +22,9 @@ export const friendlyAuthError = (message: string): string => {
   if (text.includes("fetch") || text.includes("network")) return "Sem conexão com o serviço de contas. Tente de novo.";
   return "Não foi possível concluir. Tente de novo.";
 };
+
+const DEFAULT_NEXT = "/campanhas";
+
+/** Destino depois do login: só caminhos internos, para o link não levar a outro site. */
+export const safeNextPath = (value: string | null): string =>
+  value && value.startsWith("/") && !value.startsWith("//") && !value.includes("\\") ? value : DEFAULT_NEXT;
