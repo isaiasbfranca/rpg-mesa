@@ -55,9 +55,10 @@ create policy "dono da campanha vira mestra" on public.mesa_members
       select 1 from public.mesa_docs d where d.kind = 'campaign' and d.id = campaign_id and d.user_id = auth.uid())
   );
 
+-- A mestra remove jogadores e cada jogador pode sair; a mestra nunca sai da própria campanha.
 drop policy if exists "mestra remove ou jogador sai" on public.mesa_members;
 create policy "mestra remove ou jogador sai" on public.mesa_members
-  for delete to authenticated using (user_id = auth.uid() or public.mesa_is_master(campaign_id));
+  for delete to authenticated using (role = 'jogador' and (user_id = auth.uid() or public.mesa_is_master(campaign_id)));
 
 -- Documentos.
 drop policy if exists "dono acessa os próprios documentos" on public.mesa_docs;

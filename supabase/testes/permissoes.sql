@@ -115,6 +115,7 @@ insert into resultados select 'Histórico da sessão encerrada continua visível
 
 -- Participantes e remoção (US-06).
 insert into resultados select 'B vê a lista de participantes', '2', pg_temp.como(:'B', format('select 1 from public.mesa_members where campaign_id = %L', :'CAMP'));
+insert into resultados select 'Mestra não se remove da campanha', '0', pg_temp.como(:'A', format('delete from public.mesa_members where user_id = %L', :'A'));
 insert into resultados select 'B não remove a mestra', '0', pg_temp.como(:'B', format('delete from public.mesa_members where user_id = %L', :'A'));
 insert into resultados select 'Mestra remove o jogador', '1', pg_temp.como(:'A', format('delete from public.mesa_members where user_id = %L and role = ''jogador''', :'B'));
 insert into resultados select 'Jogador removido não vê mais a campanha', '0', pg_temp.como(:'B', 'select 1 from public.mesa_docs');
