@@ -1,4 +1,4 @@
-import type { Campaign, Character, Id, Invite, Note, SessionLog } from "@/domain/types";
+import type { Campaign, Character, Id, Invite, Member, Note, SessionLog } from "@/domain/types";
 
 export type NewCampaign = Omit<Campaign, "id" | "createdAt" | "masterId" | "status">;
 export type NewCharacter = Omit<Character, "id" | "updatedAt" | "ownerId">;
@@ -30,6 +30,9 @@ export type Repository = {
   listNotes: (campaignId: Id) => Promise<Note[]>;
   createNote: (input: NewNote) => Promise<Note>;
   deleteNote: (id: Id) => Promise<void>;
+  listMembers: (campaignId: Id) => Promise<Member[]>;
+  /** Tira um jogador da mesa. Fichas dele ficam na campanha. */
+  removeMember: (campaignId: Id, userId: Id) => Promise<void>;
   listInvites: (campaignId: Id) => Promise<Invite[]>;
   createInvite: (input: NewInvite) => Promise<Invite>;
   revokeInvite: (id: Id) => Promise<void>;
