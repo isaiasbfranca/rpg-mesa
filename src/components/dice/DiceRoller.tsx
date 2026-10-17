@@ -80,7 +80,7 @@ const DiceTray = ({ roll, authorOf }: { roll?: DiceRoll; authorOf?: RollAuthorLo
   const author = roll.characterId ? authorOf?.(roll.characterId) : undefined;
   return (
     <div key={roll.rolledAt} className="felt-tray tray" aria-live="polite" aria-atomic="true">
-      <span className="tray-label">{roll.label ?? author?.name ?? roll.expression}</span>
+      <span className="tray-label">{rollTitle(roll, author?.name) ?? roll.expression}</span>
       <div className="thrown-row" aria-hidden>
         {thrown.slice(0, MAX_SHOWN_DICE).map((die, index) => {
           const tone = die.sides === 20 && die.value === 20 ? "crit" : die.sides === 20 && die.value === 1 ? "fail" : undefined;
@@ -108,9 +108,15 @@ type Props = {
   /** Falso quando a tela já mostra o último resultado em outro lugar (ex.: barra fixa da ficha). */
   showLatest?: boolean;
   authorOf?: RollAuthorLookup;
+  /** Onde a crônica fica: "local" (só neste aparelho) ou "ao vivo" (todos da sessão). */
+  scopeLabel?: string;
 };
 
-export const DiceRoller = ({ history, error, onRoll, showLatest = true, authorOf }: Props) => {
+/** Quem rolou e o motivo, quando a rolagem veio da sessão ao vivo. */
+const rollTitle = (roll: DiceRoll, fallback: string | undefined) =>
+  roll.authorName ? `${roll.authorName}${roll.label ? ` · ${roll.label}` : ""}` : (roll.label ?? fallback);
+
+export const DiceRoller = ({ history, error, onRoll, showLatest = true, authorOf, scopeLabel = "local" }: Props) => {
   const [expression, setExpression] = useState("1d20");
   const [mode, setMode] = useState<RollMode>("normal");
   const [pool, setPool] = useState<Pool>({});
@@ -188,7 +194,7 @@ export const DiceRoller = ({ history, error, onRoll, showLatest = true, authorOf
       </div>
 
       <aside className="parchment stack" style={{ gap: 8, alignSelf: "start" }} aria-label="Crônica de rolagens">
-        <h2 style={{ fontSize: 24 }}>Crônica <span className="help" style={{ fontSize: 13 }}><span className="live-dot" />local</span></h2>
+        <h2 style={{ fontSize: 24 }}>Crônica <span className="help" style={{ fontSize: 13 }}><span className="live-dot" />{scopeLabel}</span></h2>
         {history.length === 0 && <p className="muted subtitle">Nenhuma rolagem ainda.</p>}
         <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>
           {history.map((r) => {
@@ -198,7 +204,7 @@ export const DiceRoller = ({ history, error, onRoll, showLatest = true, authorOf
               <li key={r.rolledAt + r.total} className="chronicle-row">
                 {author && <CharacterAvatar avatar={author.avatar} name={author.name} size={32} />}
                 <span style={{ minWidth: 0 }}>
-                  <strong>{r.label ?? author?.name ?? "Rolagem"}</strong>
+                  <strong>{rollTitle(r, author?.name) ?? "Rolagem"}</strong>
                   <span className="mono muted" style={{ display: "block", fontSize: 12 }}>{r.expression}</span>
                 </span>
                 <span className={`total ${natural ? `roll-${natural}` : ""}`}>{r.total}</span>
