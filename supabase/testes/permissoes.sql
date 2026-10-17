@@ -72,6 +72,10 @@ insert into resultados select 'Mestra apaga ficha do jogador', '1', pg_temp.como
 insert into resultados select 'Mestra edita e arquiva a própria campanha', '1', pg_temp.como(:'A', 'update public.mesa_docs set data = ''{"status":"arquivada"}'' where kind=''campaign''');
 insert into resultados select 'Mestra edita sessão', '1', pg_temp.como(:'A', 'update public.mesa_docs set data = ''{"title":"s1 editada"}'' where kind=''sessionLog''');
 insert into resultados select 'Mestra apaga sessão', '1', pg_temp.como(:'A', 'delete from public.mesa_docs where kind=''sessionLog''');
+insert into resultados select 'Jogador não remove a mestra', '0', pg_temp.como(:'B', 'delete from public.mesa_members where role=''mestra''');
+insert into resultados select 'Mestra não se remove da campanha', '0', pg_temp.como(:'A', format('delete from public.mesa_members where user_id=%L', :'A'));
+insert into resultados select 'Mestra remove o jogador', '1', pg_temp.como(:'A', format('delete from public.mesa_members where user_id=%L', :'B'));
+insert into resultados select 'Jogador removido não vê mais a campanha', '0', pg_temp.como(:'B', 'select 1 from public.mesa_docs where kind=''campaign''');
 
 -- Estranha (sem convite).
 insert into resultados select 'Estranha não vê nada', '0', pg_temp.como(:'C', 'select 1 from public.mesa_docs');

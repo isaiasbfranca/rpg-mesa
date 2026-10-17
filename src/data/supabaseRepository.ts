@@ -1,5 +1,5 @@
 import { getSupabase } from "@/auth/supabaseClient";
-import type { Campaign, Character, Id, Invite, Note, SessionLog } from "@/domain/types";
+import type { Campaign, Character, Id, Invite, Note, Participant, SessionLog } from "@/domain/types";
 import type { InvitePreview, Repository } from "./repository";
 
 type Kind = "campaign" | "character" | "sessionLog" | "note" | "invite";
@@ -61,6 +61,25 @@ const isRecord = (value: unknown): value is Record<string, unknown> => typeof va
 const isInvite = (value: unknown): value is Invite => isRecord(value) && typeof value.token === "string" && typeof value.campaignId === "string";
 const isCampaign = (value: unknown): value is Campaign => isRecord(value) && typeof value.id === "string" && typeof value.name === "string";
 
+const isRole = (value: unknown): value is Participant["role"] => value === "mestra" || value === "jogador";
+
+const toParticipant = (row: unknown): Participant | undefined =>
+  isRecord(row) && typeof row.campaign_id === "string" && typeof row.user_id === "string" && isRole(row.role)
+    ? { campaignId: row.campaign_id, userId: row.user_id, role: row.role, displayName: typeof row.display_name === "string" ? row.display_name : undefined }
+    : undefined;
+
+const listParticipants = async (campaignId: Id): Promise<Participant[]> => {
+  const { data, error } = await getSupabase().from("mesa_members").select("campaign_id, user_id, role, display_name").eq("campaign_id", campaignId).order("joined_at");
+  if (error) return fail(error.message);
+  return data.map(toParticipant).filter((p): p is Participant => p !== undefined);
+};
+
+const removeParticipant = async (campaignId: Id, userId: Id) => {
+  const { data, error } = await getSupabase().from("mesa_members").delete().eq("campaign_id", campaignId).eq("user_id", userId).eq("role", "jogador").select("user_id");
+  if (error) fail(error.message);
+  if (!data?.length) fail("não foi possível remover este participante");
+};
+
 const previewInvite = async (token: string): Promise<InvitePreview | undefined> => {
   const { data, error } = await getSupabase().rpc("mesa_invite_preview", { invite_token: token });
   if (error) return fail(error.message);
@@ -116,6 +135,8 @@ export const createSupabaseRepository = (userId: Id): Repository => ({
     await change("invite", revoked);
   },
   findInvite: async (token) => (await previewInvite(token))?.invite,
+  listParticipants,
+  removeParticipant,
   previewInvite,
   acceptInvite: async (token) => {
     const { data, error } = await getSupabase().rpc("mesa_accept_invite", { invite_token: token });

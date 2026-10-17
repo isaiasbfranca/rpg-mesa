@@ -3,6 +3,7 @@ import {
   canArchiveCampaign,
   canCreateNpc,
   canDeleteNote,
+  canRemoveParticipant,
   canEditNote,
   canEditCampaign,
   canEditCharacter,
@@ -85,5 +86,20 @@ describe("notas", () => {
     expect(canDeleteNote(master, campaign, privateNote)).toBe(false);
     expect(canDeleteNote(other, campaign, sharedNote)).toBe(false);
     expect(canDeleteNote(owner, archived, sharedNote)).toBe(false);
+  });
+});
+
+describe("participantes", () => {
+  const player = { campaignId: campaign.id, userId: owner.userId, role: "jogador" as const };
+  const masterSeat = { campaignId: campaign.id, userId: master.userId, role: "mestra" as const };
+
+  it("mestra remove jogador, mas não a si mesma", () => {
+    expect(canRemoveParticipant(master, campaign, player)).toBe(true);
+    expect(canRemoveParticipant(master, campaign, masterSeat)).toBe(false);
+  });
+
+  it("jogador não remove ninguém e campanha arquivada não muda", () => {
+    expect(canRemoveParticipant(other, campaign, player)).toBe(false);
+    expect(canRemoveParticipant(master, archived, player)).toBe(false);
   });
 });

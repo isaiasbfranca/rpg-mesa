@@ -1,4 +1,4 @@
-import type { Campaign, Character, Id, Note, Role } from "./types";
+import type { Campaign, Character, Id, Note, Participant, Role } from "./types";
 
 /** Quem está agindo numa campanha. O servidor monta isso a partir da sessão autenticada. */
 export type Actor = { userId: Id; role: Role };
@@ -39,3 +39,7 @@ export const canEditNote = (actor: Actor, campaign: Campaign, note: Note) =>
 
 export const canDeleteNote = (actor: Actor, campaign: Campaign, note: Note) =>
   isActive(campaign) && (note.authorId === actor.userId || (isMaster(actor) && note.visibility === "campanha"));
+
+/** A mestra tira jogadores da mesa, nunca a si mesma; em campanha arquivada ninguém muda a mesa. */
+export const canRemoveParticipant = (actor: Actor, campaign: Campaign, participant: Participant) =>
+  isMaster(actor) && isActive(campaign) && participant.role === "jogador";

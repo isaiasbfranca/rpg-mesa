@@ -2,9 +2,9 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { repository } from "@/data";
-import { canEditCampaign } from "@/domain/permissions";
+import { canEditCampaign, canRemoveParticipant } from "@/domain/permissions";
 import { daysSince, isInviteOpen } from "@/domain/table";
-import type { Character, Invite } from "@/domain/types";
+import type { Character, Invite, Participant } from "@/domain/types";
 import { initialsOf } from "@/components/avatar/CharacterAvatar";
 import { useActor } from "@/hooks/useActor";
 import { useCampaign } from "./CampaignContext";
@@ -25,18 +25,31 @@ export const TavolaBoard = () => {
   const [email, setEmail] = useState("");
   const [copied, setCopied] = useState(false);
 
-  const reload = useCallback(async () => {
-    const [chars, all] = await Promise.all([repository.listCharacters(campaign.id), repository.listInvites(campaign.id)]);
+  const [participants, setParticipants] = useState<Participant[]>([]);
+  const [confirmingRemoval, setConfirmingRemoval] = useState<string | null>(null);
+
+  const fetchTable = useCallback(
+    () => Promise.all([repository.listCharacters(campaign.id), repository.listInvites(campaign.id), repository.listParticipants(campaign.id)]),
+    [campaign.id],
+  );
+
+  const showTable = ([chars, all, seated]: [Character[], Invite[], Participant[]]) => {
     setCharacters(chars);
     setInvites(all);
-  }, [campaign.id]);
+    setParticipants(seated);
+  };
+
+  const load = async () => showTable(await fetchTable());
 
   useEffect(() => {
-    Promise.all([repository.listCharacters(campaign.id), repository.listInvites(campaign.id)]).then(([chars, all]) => {
-      setCharacters(chars);
-      setInvites(all);
-    });
-  }, [campaign.id]);
+    fetchTable().then(showTable);
+  }, [fetchTable]);
+
+  const removeParticipant = async (participant: Participant) => {
+    await repository.removeParticipant(campaign.id, participant.userId);
+    setConfirmingRemoval(null);
+    await load();
+  };
 
   const open = invites.filter((i) => isInviteOpen(i));
   const link = open.find((i) => !i.email);
@@ -55,12 +68,12 @@ export const TavolaBoard = () => {
     await Promise.all(open.filter((i) => !i.email).map((i) => repository.revokeInvite(i.id)));
     await repository.createInvite({ campaignId: campaign.id });
     setCopied(false);
-    await reload();
+    await load();
   };
 
   const revoke = async (invite: Invite) => {
     await repository.revokeInvite(invite.id);
-    await reload();
+    await load();
   };
 
   const copy = async () => {
@@ -82,7 +95,7 @@ export const TavolaBoard = () => {
     const body = `Você foi convocado para a mesa "${campaign.name}". Entre por este link: ${inviteUrl(invite.token)}`;
     window.location.href = `mailto:${encodeURIComponent(address)}?subject=${encodeURIComponent(`Convocação: ${campaign.name}`)}&body=${encodeURIComponent(body)}`;
     setEmail("");
-    await reload();
+    await load();
   };
 
   return (
@@ -138,6 +151,33 @@ export const TavolaBoard = () => {
         ) : (
           <p className="muted subtitle">Só a mestra convoca jogadores.</p>
         )}
+
+        <section className="stack" aria-label="Participantes" style={{ gap: 10 }}>
+          <h2 style={{ fontSize: 22 }}>À mesa</h2>
+          {participants.map((participant) => {
+            const mine = participant.userId === actor.userId;
+            const name = participant.displayName ?? (participant.role === "mestra" ? "Mestra" : "Jogador");
+            return (
+              <div key={participant.userId} className="invite-row">
+                <span className={`token ${participant.role === "mestra" ? "master" : ""}`} aria-hidden>{initialsOf(name)}</span>
+                <span className="grow">
+                  <strong>{name}{mine && " (você)"}</strong>
+                  <span className="subtitle" style={{ display: "block", fontSize: 14 }}>{participant.role === "mestra" ? "mestra" : "jogador"}</span>
+                </span>
+                {canRemoveParticipant(actor, campaign, participant) && (
+                  confirmingRemoval === participant.userId ? (
+                    <>
+                      <button type="button" className="link-btn red" onClick={() => removeParticipant(participant)}>Confirmar remoção</button>
+                      <button type="button" className="link-btn" onClick={() => setConfirmingRemoval(null)}>Cancelar</button>
+                    </>
+                  ) : (
+                    <button type="button" className="link-btn red" onClick={() => setConfirmingRemoval(participant.userId)}>Remover</button>
+                  )
+                )}
+              </div>
+            );
+          })}
+        </section>
 
         {canInvite && named.length > 0 && (
           <section className="stack" aria-label="Convites pendentes" style={{ gap: 10 }}>

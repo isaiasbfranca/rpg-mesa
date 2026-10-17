@@ -1,4 +1,4 @@
-import type { Campaign, Character, Id, Invite, Note, SessionLog } from "@/domain/types";
+import type { Campaign, Character, Id, Invite, Note, Participant, SessionLog } from "@/domain/types";
 
 export type NewCampaign = Omit<Campaign, "id" | "createdAt" | "masterId" | "status">;
 export type NewCharacter = Omit<Character, "id" | "updatedAt" | "ownerId">;
@@ -33,6 +33,9 @@ export type Repository = {
   listInvites: (campaignId: Id) => Promise<Invite[]>;
   createInvite: (input: NewInvite) => Promise<Invite>;
   revokeInvite: (id: Id) => Promise<void>;
+  listParticipants: (campaignId: Id) => Promise<Participant[]>;
+  /** Tira um jogador da mesa (só a mestra); os personagens dele continuam salvos na conta dele. */
+  removeParticipant: (campaignId: Id, userId: Id) => Promise<void>;
   acceptInvite: (token: string) => Promise<Invite | undefined>;
   findInvite: (token: string) => Promise<Invite | undefined>;
   /** Convite com a campanha a que ele dá acesso, para quem ainda não participa dela. */

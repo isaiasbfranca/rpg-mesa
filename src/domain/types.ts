@@ -25,6 +25,9 @@ export type Campaign = {
 
 export type Membership = { campaignId: Id; userId: Id; role: Role };
 
+/** Quem está à mesa: a participação mais o nome escolhido na conta (vazio para quem não definiu). */
+export type Participant = Membership & { displayName?: string };
+
 export type Character = {
   id: Id;
   campaignId: Id;

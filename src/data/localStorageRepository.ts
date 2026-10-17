@@ -114,6 +114,12 @@ export const localStorageRepository: Repository = {
 
   findInvite: async (token) => invitesOf(read()).find((i) => i.token === token),
 
+  listParticipants: async (campaignId) => [{ campaignId, userId: LOCAL_USER_ID, role: "mestra", displayName: "Mestra" }],
+
+  removeParticipant: async () => {
+    // Neste navegador só existe a mestra; os jogadores vêm com as contas.
+  },
+
   previewInvite: async (token) => {
     const store = read();
     const invite = invitesOf(store).find((i) => i.token === token);
