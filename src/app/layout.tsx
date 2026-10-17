@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import Link from "next/link";
+import { AccountMenu } from "@/components/auth/AccountMenu";
 import { StorageAlert } from "@/components/StorageAlert";
 import "@fontsource/alegreya/latin-400.css";
 import "@fontsource/alegreya/latin-500.css";
@@ -35,10 +36,7 @@ const RootLayout = ({ children }: { children: React.ReactNode }) => (
         <Link href="/" className="brand">Mesa</Link>
         <Link href="/campanhas">Campanhas</Link>
         <Link href="/dados">Dados</Link>
-        <span className="who" title="Usuário local, sempre mestra">
-          <span>Mestra</span>
-          <span className="token master" aria-hidden>M</span>
-        </span>
+        <AccountMenu />
       </nav>
       <main className="shell">
         <StorageAlert />
