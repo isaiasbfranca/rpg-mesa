@@ -98,8 +98,8 @@ test("fundar mesa, convocar na távola e montar rolagem pelos dados", async ({ p
   await expect(page).toHaveURL(/\/campanhas\/[^/]+$/);
 
   await page.getByRole("link", { name: "Dados" }).first().click();
-  await page.getByRole("button", { name: /^Adicionar d6/ }).click();
-  await page.getByRole("button", { name: /^Adicionar d6/ }).click();
+  await page.getByRole("button", { name: /^d6/ }).click();
+  await page.getByRole("button", { name: /^d6/ }).click();
   await page.getByRole("button", { name: "Aumentar modificador" }).click();
   await expect(page.getByText("2d6 + 1")).toBeVisible();
   await page.getByRole("button", { name: "Lançar" }).click();

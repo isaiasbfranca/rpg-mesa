@@ -13,7 +13,8 @@ export type RollAuthorLookup = (characterId: string) => { name: string; avatar?:
 const QUICK_DICE = [4, 6, 8, 10, 12, 20, 100];
 const MAX_PER_DIE = 20;
 const MAX_MODIFIER = 30;
-const MODE_LABELS: Record<RollMode, string> = { normal: "Normal", vantagem: "Vantagem", desvantagem: "Desvantagem" };
+/** O nome acessível começa pelo texto visível (WCAG 2.5.3). */
+const MODE_LABELS: Record<RollMode, string> = { normal: "Normal", vantagem: "Vant. (vantagem)", desvantagem: "Desv. (desvantagem)" };
 const MODE_SHORT: Record<RollMode, string> = { normal: "Normal", vantagem: "Vant.", desvantagem: "Desv." };
 const MAX_SHOWN_DICE = 12;
 
@@ -143,11 +144,12 @@ export const DiceRoller = ({ history, error, onRoll, showLatest = true, authorOf
               return (
                 <button
                   key={sides} type="button" className={`dice-btn ${count > 0 ? "on" : ""}`}
-                  onClick={() => addDie(sides)} aria-label={`Adicionar d${sides}${count > 0 ? ` (${count} no total)` : ""}`}
+                  onClick={() => addDie(sides)}
                 >
                   <Die sides={sides} />
                   <span>d{sides}</span>
                   {count > 0 && <span className="count" aria-hidden>×{count}</span>}
+                  <span className="sr-only">{count > 0 ? `(${count} no total)` : "(adicionar)"}</span>
                 </button>
               );
             })}
