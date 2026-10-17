@@ -70,7 +70,7 @@ export const CampaignList = () => {
         {campaigns?.map((campaign) => (
           <Link key={campaign.id} href={`/campanhas/${campaign.id}`} className="card stack" style={{ gap: 4 }}>
             <h3>{campaign.name}</h3>
-            <p className="eyebrow">{campaign.system}</p>
+            <p className="eyebrow">{campaign.system}{campaign.status === "arquivada" && " · arquivada"}</p>
           </Link>
         ))}
       </div>

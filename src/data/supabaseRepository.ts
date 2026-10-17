@@ -99,6 +99,9 @@ export const createSupabaseRepository = (userId: Id): Repository => ({
   listSessionLogs: async (campaignId) => (await loadDocs<SessionLog>("sessionLog", campaignId)).toSorted((a, b) => b.date.localeCompare(a.date)),
   createSessionLog: (input) => create("sessionLog", { ...input, id: newId() }),
 
+  updateSessionLog: (log) => change("sessionLog", log),
+  deleteSessionLog: (id) => remove("sessionLog", id),
+
   listNotes: (campaignId) => loadDocs<Note>("note", campaignId),
   createNote: (input) => create("note", { ...input, id: newId(), authorId: userId }),
   deleteNote: (id) => remove("note", id),

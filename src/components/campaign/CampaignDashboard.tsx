@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
 import { repository } from "@/data";
-import { canCreateNpc, characterVisibility } from "@/domain/permissions";
+import { canArchiveCampaign, canCreateNpc, characterVisibility } from "@/domain/permissions";
 import { valuesForTemplate } from "@/domain/sheet";
 import type { Character, SessionLog } from "@/domain/types";
 import { CharacterAvatar } from "@/components/avatar/CharacterAvatar";
@@ -13,11 +13,12 @@ import { useCampaign } from "./CampaignContext";
 
 export const CampaignDashboard = () => {
   const router = useRouter();
-  const { campaign } = useCampaign();
+  const { campaign, saveCampaign } = useCampaign();
   const actor = useActor();
   const [characters, setCharacters] = useState<Character[]>([]);
   const [lastSession, setLastSession] = useState<SessionLog>();
   const [name, setName] = useState("");
+  const [confirmingArchive, setConfirmingArchive] = useState(false);
   const [kind, setKind] = useState<Character["kind"]>("pj");
 
   useEffect(() => {
@@ -38,11 +39,20 @@ export const CampaignDashboard = () => {
     router.push(`/campanhas/${campaign.id}/personagens/${character.id}`);
   };
 
+  const toggleArchived = async () => {
+    await saveCampaign({ ...campaign, status: campaign.status === "ativa" ? "arquivada" : "ativa" });
+    setConfirmingArchive(false);
+  };
+
   const visible = characters.filter((c) => characterVisibility(actor, c) !== "nenhuma");
 
   return (
     <div className="stack">
       {campaign.description && <p>{campaign.description}</p>}
+
+      {campaign.status === "arquivada" && (
+        <p className="card" role="status">Campanha arquivada: somente leitura. {canArchiveCampaign(actor) && "Reative para voltar a editar."}</p>
+      )}
 
       <section className="card stack" aria-label="Última sessão">
         <h2>Última sessão</h2>
@@ -69,6 +79,21 @@ export const CampaignDashboard = () => {
           </Link>
         ))}
       </div>
+
+      {canArchiveCampaign(actor) && (
+        <div className="row">
+          {campaign.status === "arquivada" ? (
+            <button type="button" className="secondary" onClick={toggleArchived}>Reativar campanha</button>
+          ) : confirmingArchive ? (
+            <>
+              <button type="button" onClick={toggleArchived}>Confirmar arquivamento</button>
+              <button type="button" className="secondary" onClick={() => setConfirmingArchive(false)}>Cancelar</button>
+            </>
+          ) : (
+            <button type="button" className="secondary" onClick={() => setConfirmingArchive(true)}>Arquivar campanha</button>
+          )}
+        </div>
+      )}
 
       <Link href={`/campanhas/${campaign.id}/personagens/novo`} className="btn-gold-link" style={{ alignSelf: "flex-start" }}>Novo personagem (assistente)</Link>
 

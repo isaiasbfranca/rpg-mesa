@@ -81,6 +81,13 @@ export const localStorageRepository: Repository = {
     return log;
   },
 
+  updateSessionLog: async (log) => {
+    update((s) => ({ ...s, sessionLogs: replaceById(s.sessionLogs, log) }));
+    return log;
+  },
+
+  deleteSessionLog: async (id) => update((s) => ({ ...s, sessionLogs: s.sessionLogs.filter((l) => l.id !== id) })),
+
   listNotes: async (campaignId) => read().notes.filter((n) => n.campaignId === campaignId),
 
   createNote: async (input) => {

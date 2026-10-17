@@ -29,6 +29,8 @@ export const canCreateNpc = (actor: Actor, campaign: Campaign) => isMaster(actor
 
 export const canWriteSessionLog = (actor: Actor, campaign: Campaign) => isMaster(actor) && isActive(campaign);
 
+export const canEditSessionLog = canWriteSessionLog;
+
 export const canViewNote = (actor: Actor, note: Note) =>
   note.visibility === "campanha" || note.authorId === actor.userId;
 
