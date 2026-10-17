@@ -1,4 +1,4 @@
-import type { Campaign, Character, Id, Note, Role } from "./types";
+import type { Campaign, Character, Id, Member, Note, Role } from "./types";
 
 /** Quem está agindo numa campanha. O servidor monta isso a partir da sessão autenticada. */
 export type Actor = { userId: Id; role: Role };
@@ -30,6 +30,9 @@ export const canCreateNpc = (actor: Actor, campaign: Campaign) => isMaster(actor
 export const canWriteSessionLog = (actor: Actor, campaign: Campaign) => isMaster(actor) && isActive(campaign);
 
 export const canEditSessionLog = canWriteSessionLog;
+
+/** A mestra tira jogadores da mesa; ela mesma não sai por aqui. */
+export const canRemoveMember = (actor: Actor, member: Member) => isMaster(actor) && member.role === "jogador";
 
 export const canViewNote = (actor: Actor, note: Note) =>
   note.visibility === "campanha" || note.authorId === actor.userId;

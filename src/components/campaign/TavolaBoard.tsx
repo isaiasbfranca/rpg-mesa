@@ -2,9 +2,9 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { repository } from "@/data";
-import { canEditCampaign } from "@/domain/permissions";
+import { canEditCampaign, canRemoveMember } from "@/domain/permissions";
 import { daysSince, isInviteOpen } from "@/domain/table";
-import type { Character, Invite } from "@/domain/types";
+import type { Character, Invite, Member } from "@/domain/types";
 import { initialsOf } from "@/components/avatar/CharacterAvatar";
 import { useActor } from "@/hooks/useActor";
 import { useCampaign } from "./CampaignContext";
@@ -21,31 +21,40 @@ export const TavolaBoard = () => {
   const actor = useActor();
   const canInvite = canEditCampaign(actor, campaign);
   const [characters, setCharacters] = useState<Character[]>([]);
+  const [members, setMembers] = useState<Member[]>([]);
+  const [removingId, setRemovingId] = useState<string>();
   const [invites, setInvites] = useState<Invite[]>([]);
   const [email, setEmail] = useState("");
   const [copied, setCopied] = useState(false);
 
   const reload = useCallback(async () => {
-    const [chars, all] = await Promise.all([repository.listCharacters(campaign.id), repository.listInvites(campaign.id)]);
+    const [chars, all, team] = await Promise.all([repository.listCharacters(campaign.id), repository.listInvites(campaign.id), repository.listMembers(campaign.id)]);
     setCharacters(chars);
     setInvites(all);
+    setMembers(team);
   }, [campaign.id]);
 
   useEffect(() => {
-    Promise.all([repository.listCharacters(campaign.id), repository.listInvites(campaign.id)]).then(([chars, all]) => {
+    Promise.all([repository.listCharacters(campaign.id), repository.listInvites(campaign.id), repository.listMembers(campaign.id)]).then(([chars, all, team]) => {
       setCharacters(chars);
       setInvites(all);
+      setMembers(team);
     });
   }, [campaign.id]);
 
   const open = invites.filter((i) => isInviteOpen(i));
   const link = open.find((i) => !i.email);
   const named = open.filter((i) => i.email);
-  const players = characters.filter((c) => c.kind === "pj");
+  const guests = members.filter((m) => m.role === "jogador");
+  const memberIds = new Set(members.map((m) => m.userId));
+  const players = characters.filter((c) => c.kind === "pj" && !memberIds.has(c.ownerId));
+  const characterOf = (userId: string) => characters.find((c) => c.kind === "pj" && c.ownerId === userId);
+  const guestName = (member: Member) => member.displayName ?? "Jogador";
 
-  const capacity = Math.max((campaign.seats ?? DEFAULT_SEATS) + 1, players.length + named.length + 1);
+  const capacity = Math.max((campaign.seats ?? DEFAULT_SEATS) + 1, guests.length + players.length + named.length + 1);
   const seats: SeatInfo[] = [
     { kind: "master", initials: initialsOf("Mestra"), name: "Mestra" },
+    ...guests.map((m): SeatInfo => ({ kind: "player", initials: initialsOf(guestName(m)), name: guestName(m), sub: characterOf(m.userId)?.name ?? "jogador" })),
     ...players.map((c): SeatInfo => ({ kind: "player", initials: initialsOf(c.name), name: c.name, sub: "personagem" })),
     ...named.map((i): SeatInfo => ({ kind: "pending", initials: initialsOf(i.email ?? "?"), name: i.email ?? "", sub: "convocado" })),
   ];
@@ -55,6 +64,12 @@ export const TavolaBoard = () => {
     await Promise.all(open.filter((i) => !i.email).map((i) => repository.revokeInvite(i.id)));
     await repository.createInvite({ campaignId: campaign.id });
     setCopied(false);
+    await reload();
+  };
+
+  const removeGuest = async (member: Member) => {
+    await repository.removeMember(campaign.id, member.userId);
+    setRemovingId(undefined);
     await reload();
   };
 
@@ -138,6 +153,31 @@ export const TavolaBoard = () => {
         ) : (
           <p className="muted subtitle">Só a mestra convoca jogadores.</p>
         )}
+
+        <section className="stack" aria-label="Participantes" style={{ gap: 10 }}>
+          <h2 style={{ fontSize: 22 }}>Participantes</h2>
+          {members.map((member) => (
+            <div key={member.userId} className="invite-row">
+              <span className="token" aria-hidden>{initialsOf(member.role === "mestra" ? "Mestra" : guestName(member))}</span>
+              <span className="grow">
+                <strong>{member.role === "mestra" ? (member.displayName ?? "Mestra") : guestName(member)}</strong>
+                <span className="subtitle" style={{ display: "block", fontSize: 14 }}>
+                  {member.role === "mestra" ? "mestra" : "jogador"}
+                  {characterOf(member.userId) && ` · ${characterOf(member.userId)?.name}`}
+                </span>
+              </span>
+              {canRemoveMember(actor, member) &&
+                (removingId === member.userId ? (
+                  <>
+                    <button type="button" className="link-btn red" onClick={() => removeGuest(member)}>Confirmar remoção de {guestName(member)}</button>
+                    <button type="button" className="link-btn" onClick={() => setRemovingId(undefined)}>Cancelar</button>
+                  </>
+                ) : (
+                  <button type="button" className="link-btn red" onClick={() => setRemovingId(member.userId)} aria-label={`Remover ${guestName(member)}`}>Remover</button>
+                ))}
+            </div>
+          ))}
+        </section>
 
         {canInvite && named.length > 0 && (
           <section className="stack" aria-label="Convites pendentes" style={{ gap: 10 }}>

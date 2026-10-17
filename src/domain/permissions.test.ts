@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   canArchiveCampaign,
   canCreateNpc,
+  canRemoveMember,
   canDeleteNote,
   canEditNote,
   canEditCampaign,
@@ -85,5 +86,13 @@ describe("notas", () => {
     expect(canDeleteNote(master, campaign, privateNote)).toBe(false);
     expect(canDeleteNote(other, campaign, sharedNote)).toBe(false);
     expect(canDeleteNote(owner, archived, sharedNote)).toBe(false);
+  });
+});
+
+describe("participantes", () => {
+  it("só a mestra remove jogadores, nunca a si mesma", () => {
+    expect(canRemoveMember(master, { campaignId: "c", userId: "j1", role: "jogador" })).toBe(true);
+    expect(canRemoveMember(master, { campaignId: "c", userId: "m", role: "mestra" })).toBe(false);
+    expect(canRemoveMember(owner, { campaignId: "c", userId: "j2", role: "jogador" })).toBe(false);
   });
 });
