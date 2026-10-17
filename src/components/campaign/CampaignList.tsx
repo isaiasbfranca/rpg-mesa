@@ -4,19 +4,38 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
 import { repository } from "@/data";
-import { EXAMPLE_TEMPLATES } from "@/domain/templates";
+import { EXAMPLE_TEMPLATES, type ExampleTemplate } from "@/domain/templates";
 import { clampSeats, MAX_SEATS, MIN_SEATS } from "@/domain/table";
 import type { Campaign } from "@/domain/types";
 import { RoundTable, type SeatInfo } from "./RoundTable";
 
-const TOME_COLORS: Record<string, string> = { "classico-d20": "#2c4a3a", narrativo: "#5a2420", "em-branco": "#3d3226" };
-const TOME_DICE: Record<string, string> = { "classico-d20": "1d20 + mod", narrativo: "1d6 + valor", "em-branco": "você decide" };
+const TOME_COLORS: Record<string, string> = { "classico-d20": "#2c4a3a", "dnd5e-srd": "#4a2c5a", narrativo: "#5a2420", "em-branco": "#3d3226" };
+const TOME_DICE: Record<string, string> = { "classico-d20": "1d20 + mod", "dnd5e-srd": "1d20 + mod", narrativo: "1d6 + valor", "em-branco": "você decide" };
 const STEP_LABELS = ["Nome", "Tomo", "Cadeiras"];
 
 const seatsAround = (players: number): SeatInfo[] => [
   { kind: "master", initials: "M", name: "Mestra" },
   ...Array.from({ length: players }, (_, i): SeatInfo => ({ kind: "empty", initials: "+", name: `Vaga ${i + 1}` })),
 ];
+
+const TemplatePreview = ({ example }: { example: ExampleTemplate }) => (
+  <section className="card stack" aria-label={`Pré-visualização de ${example.name}`} style={{ gap: 8 }}>
+    <h3>Como fica a ficha</h3>
+    <ul className="stack" style={{ gap: 4, listStyle: "none", padding: 0, margin: 0 }}>
+      {example.template.sections.map((section) => (
+        <li key={section.id}>
+          <strong>{section.title}</strong>
+          <span className="muted"> · {section.fields.map((field) => field.label).join(", ")}</span>
+        </li>
+      ))}
+    </ul>
+    {example.source && (
+      <p className="help">
+        Fonte: <a href={example.source.url} target="_blank" rel="noreferrer">{example.source.name}</a>. Licença: {example.source.license}. A campanha criada é independente deste modelo.
+      </p>
+    )}
+  </section>
+);
 
 export const CampaignList = () => {
   const router = useRouter();
@@ -55,6 +74,8 @@ export const CampaignList = () => {
     if (step < 3) setStep(step + 1);
     else create("tavola");
   };
+
+  const selectedExample = EXAMPLE_TEMPLATES.find((t) => t.id === templateId);
 
   const section = (n: number) => `fund-section ${step === n ? "is-current" : ""}`;
 
@@ -117,11 +138,13 @@ export const CampaignList = () => {
                     <input type="radio" name="template" value={example.id} checked={templateId === example.id} onChange={() => setTemplateId(example.id)} />
                     {templateId === example.id && <span className="ribbon">Escolhido</span>}
                     <strong>{example.name}</strong>
+                    {example.system && <span className="desc">{example.system}</span>}
                     <span className="desc">{example.description}</span>
                     <span className="dice">{TOME_DICE[example.id] ?? ""}</span>
                   </label>
                 ))}
               </div>
+              {selectedExample && <TemplatePreview example={selectedExample} />}
             </fieldset>
           </div>
 
