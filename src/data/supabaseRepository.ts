@@ -1,5 +1,5 @@
 import { getSupabase } from "@/auth/supabaseClient";
-import type { Campaign, Character, Id, Invite, Note, SessionLog } from "@/domain/types";
+import type { Campaign, Character, Id, Invite, Member, Note, SessionLog } from "@/domain/types";
 import type { InvitePreview, Repository } from "./repository";
 
 type Kind = "campaign" | "character" | "sessionLog" | "note" | "invite";
@@ -67,6 +67,20 @@ const previewInvite = async (token: string): Promise<InvitePreview | undefined> 
   return isRecord(data) && isInvite(data.invite) && isCampaign(data.campaign) ? { invite: data.invite, campaign: data.campaign } : undefined;
 };
 
+type MemberRow = { campaign_id: Id; user_id: Id; role: Member["role"]; display_name: string | null };
+
+const listMembers = async (campaignId: Id): Promise<Member[]> => {
+  const { data, error } = await getSupabase().from("mesa_members").select("campaign_id, user_id, role, display_name").eq("campaign_id", campaignId).order("joined_at");
+  if (error) return fail(error.message);
+  return (data as MemberRow[]).map((row) => ({ campaignId: row.campaign_id, userId: row.user_id, role: row.role, displayName: row.display_name ?? undefined }));
+};
+
+const removeMember = async (campaignId: Id, userId: Id) => {
+  const { data, error } = await getSupabase().from("mesa_members").delete().eq("campaign_id", campaignId).eq("user_id", userId).eq("role", "jogador").select("user_id");
+  if (error) fail(error.message);
+  if (!data?.length) fail("sem permissão para remover este participante");
+};
+
 const addMaster = async (campaignIds: Id[], userId: Id) => {
   const rows = campaignIds.map((campaign_id) => ({ campaign_id, user_id: userId, role: "mestra" }));
   const { error } = await getSupabase().from("mesa_members").upsert(rows, { onConflict: "campaign_id,user_id", ignoreDuplicates: true });
@@ -105,6 +119,9 @@ export const createSupabaseRepository = (userId: Id): Repository => ({
   listNotes: (campaignId) => loadDocs<Note>("note", campaignId),
   createNote: (input) => create("note", { ...input, id: newId(), authorId: userId }),
   deleteNote: (id) => remove("note", id),
+
+  listMembers,
+  removeMember,
 
   listInvites: async (campaignId) =>
     (await loadDocs<Invite>("invite", campaignId)).filter((i) => i.status !== "revogado").toSorted((a, b) => b.createdAt.localeCompare(a.createdAt)),

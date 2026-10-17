@@ -1,4 +1,4 @@
-import type { Campaign, Character, Invite, Note, SessionLog } from "@/domain/types";
+import type { Campaign, Character, Invite, Member, Note, SessionLog } from "@/domain/types";
 import type { Repository } from "./repository";
 import { readJson, writeJson } from "./storage";
 
@@ -97,6 +97,11 @@ export const localStorageRepository: Repository = {
   },
 
   deleteNote: async (id) => update((s) => ({ ...s, notes: s.notes.filter((n) => n.id !== id) })),
+
+  /** Neste navegador só existe a mestra; jogadores só chegam com conta. */
+  listMembers: async (campaignId): Promise<Member[]> => [{ campaignId, userId: LOCAL_USER_ID, role: "mestra" }],
+
+  removeMember: async () => undefined,
 
   listInvites: async (campaignId) =>
     invitesOf(read())
